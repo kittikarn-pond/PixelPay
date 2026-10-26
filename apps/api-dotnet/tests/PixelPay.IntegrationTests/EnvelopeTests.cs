@@ -56,7 +56,31 @@ public class EnvelopeTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Unknown_route_is_nest_404() =>
         await AssertResponse(await _client.GetAsync("/api/v1/nope?x=1", Ct), HttpStatusCode.NotFound,
-            """{"success":false,"error":{"statusCode":404,"message":"Cannot GET /api/v1/nope","error":"Not Found"}}""");
+            """{"success":false,"error":{"statusCode":404,"message":"Cannot GET /api/v1/nope?x=1","error":"Not Found"}}""");
+
+    [Fact]
+    public async Task Bare_ok_is_wrapped_with_null_data() =>
+        await AssertResponse(await _client.GetAsync("/api/v1/envelope-test/bare-ok", Ct), HttpStatusCode.OK,
+            """{"success":true,"data":null}""");
+
+    [Fact]
+    public async Task Bare_not_found_renders_nest_body() =>
+        await AssertResponse(await _client.GetAsync("/api/v1/envelope-test/bare-not-found", Ct), HttpStatusCode.NotFound,
+            """{"success":false,"error":{"statusCode":404,"message":"Not Found"}}""");
+
+    [Fact]
+    public async Task Bare_unauthorized_result_renders_nest_body() =>
+        await AssertResponse(await _client.GetAsync("/api/v1/envelope-test/bare-unauthorized", Ct), HttpStatusCode.Unauthorized,
+            """{"success":false,"error":{"statusCode":401,"message":"Unauthorized"}}""");
+
+    [Fact]
+    public async Task Non_json_body_is_validated_as_empty_object()
+    {
+        var res = await _client.PostAsync("/api/v1/envelope-test/named", new StringContent("hello", Encoding.UTF8, "text/plain"), Ct);
+
+        await AssertResponse(res, HttpStatusCode.BadRequest,
+            """{"success":false,"error":{"statusCode":400,"message":["name should not be empty"],"error":"Bad Request"}}""");
+    }
 
     [Fact]
     public async Task Wrong_method_is_nest_404_not_405() =>
@@ -89,7 +113,7 @@ public class EnvelopeTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
     [Theory]
     [InlineData("""{"name":""")]
-    [InlineData("")]
+    [InlineData("")] // Deliberate deviation (R8): Nest returns 500 for an empty JSON body.
     public async Task Malformed_or_empty_json_is_400_with_string_message(string body) =>
         await AssertResponse(await PostJson("/api/v1/envelope-test/loose", body), HttpStatusCode.BadRequest,
             """{"success":false,"error":{"statusCode":400,"message":"Body is not valid JSON but content-type is set to 'application/json'","error":"Bad Request"}}""");

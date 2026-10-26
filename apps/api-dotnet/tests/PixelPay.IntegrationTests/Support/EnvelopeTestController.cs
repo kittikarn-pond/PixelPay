@@ -32,6 +32,15 @@ public class EnvelopeTestController : ControllerBase
     [HttpGet("crash")]
     public object Crash() => throw new InvalidOperationException("boom");
 
+    [HttpGet("bare-ok")]
+    public IActionResult BareOk() => Ok();
+
+    [HttpGet("bare-not-found")]
+    public IActionResult BareNotFound() => NotFound();
+
+    [HttpGet("bare-unauthorized")]
+    public IActionResult BareUnauthorized() => Unauthorized();
+
     [HttpPost("named")]
     public object Named(NamedDto dto) => dto;
 

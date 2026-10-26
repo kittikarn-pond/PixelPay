@@ -17,10 +17,16 @@ public static class ApiJson
         o.NumberHandling = JsonNumberHandling.Strict;
         // JSON.stringify does not escape non-ASCII or HTML characters.
         o.Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
-        o.Converters.Add(new PrismaDecimalConverter());
-        o.Converters.Add(new UtcDateTimeConverter());
-        o.Converters.Add(new RawJsonConverter());
-        o.Converters.Add(new JsonStringEnumConverter());
+        AddOnce(o, new PrismaDecimalConverter());
+        AddOnce(o, new UtcDateTimeConverter());
+        AddOnce(o, new RawJsonConverter());
+        AddOnce(o, new JsonStringEnumConverter());
+    }
+
+    private static void AddOnce(JsonSerializerOptions o, JsonConverter converter)
+    {
+        if (!o.Converters.Any(c => c.GetType() == converter.GetType()))
+            o.Converters.Add(converter);
     }
 
     private static JsonSerializerOptions CreateOptions()

@@ -10,8 +10,25 @@ public class ConverterTests
     [Theory]
     [InlineData("100.00", "\"100\"")] [InlineData("12.50", "\"12.5\"")]
     [InlineData("0.0000", "\"0\"")]   [InlineData("10.1234", "\"10.1234\"")]
+    [InlineData("-12.50", "\"-12.5\"")]
     public void Decimal_matches_prisma(string v, string json) =>
         Assert.Equal(json, JsonSerializer.Serialize(decimal.Parse(v, CultureInfo.InvariantCulture), ApiJson.Options));
+
+    [Fact]
+    public void Negative_zero_matches_decimal_js()
+    {
+        Assert.Equal("\"0\"", JsonSerializer.Serialize(0m * -1m, ApiJson.Options)); // .NET clears the sign here
+        Assert.Equal("\"-0\"", JsonSerializer.Serialize(new decimal(0, 0, 0, true, 2), ApiJson.Options));
+    }
+
+    [Fact]
+    public void Apply_is_idempotent()
+    {
+        var o = new JsonSerializerOptions();
+        ApiJson.Apply(o);
+        ApiJson.Apply(o);
+        Assert.Equal(4, o.Converters.Count);
+    }
 
     [Fact]
     public void Date_has_three_fraction_digits_and_Z() =>

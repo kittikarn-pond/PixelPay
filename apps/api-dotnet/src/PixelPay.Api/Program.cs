@@ -28,6 +28,7 @@ builder.Services.AddControllers(o =>
     {
         o.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
         o.ModelBindingMessageProvider.SetMissingRequestBodyRequiredValueAccessor(() => NestErrors.InvalidJsonMessage);
+        o.Filters.Add<NonJsonBodyFilter>();
         o.Filters.Add<StrictBodyFilter>();
         o.Filters.Add<ValidationFilter>();
         o.Filters.Add<EnvelopeResultFilter>();

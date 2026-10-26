@@ -35,12 +35,12 @@ public sealed class ExceptionEnvelopeMiddleware(RequestDelegate next, ILogger<Ex
         && context.Response.StatusCode is StatusCodes.Status404NotFound or StatusCodes.Status405MethodNotAllowed
         && context.GetEndpoint()?.Metadata.GetMetadata<ControllerActionDescriptor>() is null;
 
+    // Fastify's raw.url: undecoded, query string included.
     private static string RequestedPath(HttpContext context)
     {
         var raw = context.Features.Get<IHttpRequestFeature>()?.RawTarget;
-        if (string.IsNullOrEmpty(raw))
-            return context.Request.PathBase + context.Request.Path;
-        var query = raw.IndexOf('?');
-        return query < 0 ? raw : raw[..query];
+        return string.IsNullOrEmpty(raw)
+            ? $"{context.Request.PathBase}{context.Request.Path}{context.Request.QueryString}"
+            : raw;
     }
 }

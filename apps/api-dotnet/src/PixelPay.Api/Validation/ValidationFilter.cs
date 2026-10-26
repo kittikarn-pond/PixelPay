@@ -10,10 +10,11 @@ public sealed class ValidationFilter : IAsyncActionFilter
     {
         var messages = new List<string>(StrictBodyFilter.Messages(context.HttpContext));
 
-        foreach (var arg in context.ActionArguments.Values)
+        foreach (var parameter in context.ActionDescriptor.Parameters)
         {
-            if (arg is null
-                || context.HttpContext.RequestServices.GetService(typeof(IValidator<>).MakeGenericType(arg.GetType()))
+            if (!context.ActionArguments.TryGetValue(parameter.Name, out var arg)
+                || arg is null
+                || context.HttpContext.RequestServices.GetService(typeof(IValidator<>).MakeGenericType(parameter.ParameterType))
                     is not IValidator validator)
                 continue;
             var result = await validator.ValidateAsync(new ValidationContext<object>(arg), context.HttpContext.RequestAborted);

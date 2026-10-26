@@ -15,6 +15,13 @@ public sealed class EnvelopeResultFilter : IResultFilter
             case EmptyResult:
                 context.Result = Success(context, null, null);
                 break;
+            // 204 cannot carry a body (Fastify strips it too).
+            case StatusCodeResult { StatusCode: < 300 and not StatusCodes.Status204NoContent } result:
+                context.Result = Success(context, null, result.StatusCode);
+                break;
+            case StatusCodeResult { StatusCode: >= 400 } result:
+                context.Result = NestErrors.Http(result.StatusCode);
+                break;
         }
     }
 
