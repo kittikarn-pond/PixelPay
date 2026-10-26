@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\PixelPay.Domain\PixelPay.Domain.csproj" />
+  </ItemGroup>
+</Project>

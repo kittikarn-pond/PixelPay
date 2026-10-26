@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\PixelPay.Application\PixelPay.Application.csproj" />
+    <ProjectReference Include="..\PixelPay.Domain\PixelPay.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="MySqlConnector" />
+  </ItemGroup>
+</Project>
