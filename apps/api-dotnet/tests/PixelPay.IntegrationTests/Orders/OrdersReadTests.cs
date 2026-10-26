@@ -159,9 +159,31 @@ public sealed class OrdersReadTests(ApiFactory factory) : IClassFixture<ApiFacto
     }
 
     [Theory]
+    [InlineData("page=2.5&limit=20", 0, 2.5, 20)]
+    [InlineData("limit=1e1", 10, 1, 10)]
+    [InlineData("limit=", 0, 1, 0)]
+    public async Task List_parses_query_like_unary_plus(string query, int expectedItems, double page, double limit)
+    {
+        var me = await NewUser();
+        var product = await NewProduct();
+        for (var i = 0; i < 12; i++)
+            await NewOrder(me, product.Id);
+
+        var data = await Data(await Get($"/api/v1/orders?{query}", Token(me)), HttpStatusCode.OK);
+
+        Assert.Equal(expectedItems, data.GetProperty("items").GetArrayLength());
+        Assert.Equal(12, data.GetProperty("total").GetInt32());
+        Assert.Equal(page, data.GetProperty("page").GetDouble());
+        Assert.Equal(limit, data.GetProperty("limit").GetDouble());
+    }
+
+    [Theory]
     [InlineData("page=abc")]
-    [InlineData("limit=")]
-    public async Task List_unparseable_query_returns_500(string query) =>
+    [InlineData("page=12abc")]
+    [InlineData("limit=5.5")]
+    [InlineData("page=1&page=2")]
+    [InlineData("page=0")]
+    public async Task List_invalid_paging_returns_500(string query) =>
         await AssertBody(await Get($"/api/v1/orders?{query}", Token(await NewUser())), HttpStatusCode.InternalServerError, InternalError);
 
     [Fact]
