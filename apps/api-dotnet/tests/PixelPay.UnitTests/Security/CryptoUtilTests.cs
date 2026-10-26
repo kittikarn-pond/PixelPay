@@ -52,5 +52,23 @@ public class CryptoUtilTests
     [InlineData("aa:bb")]
     [InlineData("zz:yy:xx")]
     public void Malformed_input_throws(string input) =>
-        Assert.ThrowsAny<SystemException>(() => CryptoUtil.DecryptAes256(V.KeyHex, input));
+        Assert.Throws<FormatException>(() => CryptoUtil.DecryptAes256(V.KeyHex, input));
+
+    [Theory]
+    [InlineData(16)]
+    [InlineData(24)]
+    public void Non_256_bit_key_throws(int bytes)
+    {
+        var key = Convert.ToHexStringLower(new byte[bytes]);
+        Assert.Throws<ArgumentException>(() => CryptoUtil.EncryptAes256(key, "x"));
+        Assert.Throws<ArgumentException>(() => CryptoUtil.DecryptAes256(key, V.Ciphertext));
+    }
+
+    [Fact]
+    public void Decrypts_uppercase_hex() =>
+        Assert.Equal(V.Plaintext, CryptoUtil.DecryptAes256(V.KeyHex.ToUpperInvariant(), V.Ciphertext.ToUpperInvariant()));
+
+    [Fact]
+    public void Encrypt_uses_random_iv() =>
+        Assert.NotEqual(CryptoUtil.EncryptAes256(V.KeyHex, V.Plaintext), CryptoUtil.EncryptAes256(V.KeyHex, V.Plaintext));
 }

@@ -6,6 +6,7 @@ namespace PixelPay.Infrastructure.Security;
 /// <summary>Byte-compatible with apps/api/src/common/utils/crypto.ts.</summary>
 public static class CryptoUtil
 {
+    private const int KeySize = 32;
     private const int IvSize = 12;
     private const int TagSize = 16;
 
@@ -18,7 +19,7 @@ public static class CryptoUtil
         var data = Encoding.UTF8.GetBytes(plaintext);
         var encrypted = new byte[data.Length];
         var tag = new byte[TagSize];
-        using var aes = new AesGcm(Convert.FromHexString(keyHex), TagSize);
+        using var aes = new AesGcm(ParseKey(keyHex), TagSize);
         aes.Encrypt(iv, data, encrypted, tag);
         return $"{Convert.ToHexStringLower(iv)}:{Convert.ToHexStringLower(tag)}:{Convert.ToHexStringLower(encrypted)}";
     }
@@ -33,8 +34,16 @@ public static class CryptoUtil
         var tag = Convert.FromHexString(parts[1]);
         var data = Convert.FromHexString(parts[2]);
         var plain = new byte[data.Length];
-        using var aes = new AesGcm(Convert.FromHexString(keyHex), TagSize);
+        using var aes = new AesGcm(ParseKey(keyHex), TagSize);
         aes.Decrypt(iv, data, tag, plain);
         return Encoding.UTF8.GetString(plain);
+    }
+
+    private static byte[] ParseKey(string keyHex)
+    {
+        var key = Convert.FromHexString(keyHex);
+        if (key.Length != KeySize)
+            throw new ArgumentException($"Key must be {KeySize} bytes ({KeySize * 2} hex chars).", nameof(keyHex));
+        return key;
     }
 }
