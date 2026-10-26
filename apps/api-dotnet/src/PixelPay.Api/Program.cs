@@ -1,5 +1,11 @@
-using System.Text.Json;
+using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
 using MySqlConnector;
+using PixelPay.Api.Envelope;
+using PixelPay.Api.Json;
+using PixelPay.Api.Routing;
+using PixelPay.Api.Validation;
+using PixelPay.Application.Common;
 using PixelPay.Infrastructure.Config;
 using Serilog;
 using Serilog.Events;
@@ -18,8 +24,26 @@ builder.Services.AddSerilog(lc => lc
 builder.Services.AddSingleton(env);
 builder.Services.AddSingleton(_ => new MySqlDataSource(env.ConnectionString));
 
-builder.Services.AddControllers()
-    .AddJsonOptions(o => o.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase);
+builder.Services.AddControllers(o =>
+    {
+        o.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+        o.ModelBindingMessageProvider.SetMissingRequestBodyRequiredValueAccessor(() => NestErrors.InvalidJsonMessage);
+        o.Filters.Add<StrictBodyFilter>();
+        o.Filters.Add<ValidationFilter>();
+        o.Filters.Add<EnvelopeResultFilter>();
+    })
+    .AddJsonOptions(o =>
+    {
+        ApiJson.Apply(o.JsonSerializerOptions);
+        o.AllowInputFormatterExceptionMessages = false;
+    })
+    .ConfigureApiBehaviorOptions(o =>
+    {
+        o.SuppressMapClientErrors = true;
+        o.InvalidModelStateResponseFactory = ModelStateErrors.ToNestError;
+    });
+builder.Services.AddValidatorsFromAssemblyContaining<ApiException>();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(env.FrontendUrl)
@@ -36,6 +60,9 @@ if (builder.Environment.IsDevelopment())
 var app = builder.Build();
 
 app.UseSerilogRequestLogging();
+app.UseMiddleware<HeadAsGetMiddleware>();
+app.UseMiddleware<ExceptionEnvelopeMiddleware>();
+app.UseRouting();
 app.UseCors();
 
 if (app.Environment.IsDevelopment())

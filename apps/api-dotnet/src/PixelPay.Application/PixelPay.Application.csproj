@@ -2,4 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="..\PixelPay.Domain\PixelPay.Domain.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
 </Project>
