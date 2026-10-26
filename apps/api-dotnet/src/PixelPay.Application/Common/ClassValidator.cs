@@ -19,6 +19,18 @@ public static partial class ClassValidator
     /// <summary>JSON undefined or null, which <c>@IsOptional()</c> skips.</summary>
     public static bool IsMissing(JsonElement? value) => value is null or { ValueKind: JsonValueKind.Null };
 
+    /// <summary><c>@IsNumber()</c>: a JS number that is not NaN or ±Infinity (JSON.parse turns 1e400 into Infinity).</summary>
+    public static bool IsNumber(JsonElement? value) => JsNumber(value) is { } d && double.IsFinite(d);
+
+    /// <summary><c>@IsPositive()</c>: a JS number greater than zero, Infinity included.</summary>
+    public static bool IsPositive(JsonElement? value) => JsNumber(value) > 0;
+
+    /// <summary>The number JSON.parse would give, or null for a non-number.</summary>
+    private static double? JsNumber(JsonElement? value) =>
+        value is { ValueKind: JsonValueKind.Number } v
+            ? double.Parse(v.GetRawText(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture)
+            : null;
+
     public static bool MinLength(JsonElement? value, int min) => value.Text() is { } s && Length(s) >= min;
 
     public static bool MaxLength(JsonElement? value, int max) => value.Text() is { } s && Length(s) <= max;

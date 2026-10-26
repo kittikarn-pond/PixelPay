@@ -6,6 +6,7 @@ using PixelPay.Api.Envelope;
 using PixelPay.Application.Auth;
 using PixelPay.Application.Common;
 using PixelPay.Application.Users;
+using PixelPay.Application.Wallets;
 using PixelPay.Infrastructure.Auth;
 using PixelPay.Infrastructure.Config;
 
@@ -20,6 +21,7 @@ public static class AuthSetup
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<AuthService>();
         services.AddScoped<UsersService>();
+        services.AddScoped<WalletService>();
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, NestAuthorizationResultHandler>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

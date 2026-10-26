@@ -1,3 +1,4 @@
+using System.Text.Json;
 using PixelPay.Application.Common;
 
 namespace PixelPay.UnitTests.Common;
@@ -38,4 +39,32 @@ public class ClassValidatorTests
     [InlineData("\U0001F600\U0001F600aA1", 5)]
     public void Length_counts_like_validator_js(string s, int expected) =>
         Assert.Equal(expected, ClassValidator.Length(s));
+
+    // class-validator @IsNumber() (no NaN/Infinity) and @IsPositive() on what JSON.parse gives.
+    [Theory]
+    [InlineData("5", true, true)]
+    [InlineData("0.01", true, true)]
+    [InlineData("0", true, false)]
+    [InlineData("-0", true, false)]
+    [InlineData("-10", true, false)]
+    [InlineData("1e-400", true, false)]
+    [InlineData("1e400", false, true)]
+    [InlineData("-1e400", false, false)]
+    [InlineData("\"5\"", false, false)]
+    [InlineData("true", false, false)]
+    [InlineData("null", false, false)]
+    [InlineData("[1]", false, false)]
+    public void IsNumber_and_IsPositive_match_class_validator(string json, bool isNumber, bool isPositive)
+    {
+        JsonElement? v = JsonDocument.Parse(json).RootElement;
+        Assert.Equal(isNumber, ClassValidator.IsNumber(v));
+        Assert.Equal(isPositive, ClassValidator.IsPositive(v));
+    }
+
+    [Fact]
+    public void Missing_value_is_neither_number_nor_positive()
+    {
+        Assert.False(ClassValidator.IsNumber(null));
+        Assert.False(ClassValidator.IsPositive(null));
+    }
 }
