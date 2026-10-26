@@ -1,0 +1,4 @@
+{
+  "secret": "test_jwt_secret_64_chars_minimum_for_testing_purposes_only",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJlbWFpbCI6ImFAYi5jIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzkyOTg2NTkyLCJleHAiOjIxMDgzNDY1OTJ9.edIp56GXcOzMULoBKrAYRnNgTCy-Q0FU4SPGRC-G-ps"
+}
