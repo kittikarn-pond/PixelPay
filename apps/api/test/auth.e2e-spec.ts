@@ -102,4 +102,20 @@ describe('Auth (e2e)', () => {
         .expect(400);
     });
   });
+
+  // Tokens issued by Node must be accepted by the server under test (.NET via the gateway).
+  const nodeUrl = process.env.E2E_NODE_URL;
+  (nodeUrl ? it : it.skip)('accepts a token issued by the Node API', async () => {
+    const nodeUser = { ...user, email: `node+${Date.now()}@pixelpay.test` };
+    await request(nodeUrl).post('/api/v1/auth/register').send(nodeUser).expect(201);
+    const login = await request(nodeUrl)
+      .post('/api/v1/auth/login')
+      .send({ email: nodeUser.email, password: nodeUser.password })
+      .expect(200);
+
+    await request(target.http)
+      .get('/api/v1/wallet')
+      .set('Authorization', `Bearer ${login.body.data.accessToken}`)
+      .expect(200);
+  });
 });

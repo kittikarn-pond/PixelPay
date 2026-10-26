@@ -1,0 +1,16 @@
+# Stage 1: Build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS builder
+WORKDIR /src
+COPY apps/api-dotnet/global.json apps/api-dotnet/Directory.Build.props apps/api-dotnet/Directory.Packages.props ./
+COPY apps/api-dotnet/src/PixelPay.Gateway/PixelPay.Gateway.csproj src/PixelPay.Gateway/
+RUN dotnet restore src/PixelPay.Gateway/PixelPay.Gateway.csproj
+COPY apps/api-dotnet/src/PixelPay.Gateway ./src/PixelPay.Gateway
+RUN dotnet publish src/PixelPay.Gateway/PixelPay.Gateway.csproj -c Release -o /out --no-restore
+
+# Stage 2: Run
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runner
+WORKDIR /app
+COPY --from=builder --chown=app:app /out ./
+USER app
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "PixelPay.Gateway.dll"]
