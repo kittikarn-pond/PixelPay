@@ -24,6 +24,30 @@ public partial class PixelPayDbContext : IAppDbContext
         return new PixelPayDbContext(options.Options);
     }
 
+    // Prisma @updatedAt is client-side. ExecuteUpdate bypasses this: set UpdatedAt in the setter list.
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        StampUpdatedAt();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        StampUpdatedAt();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void StampUpdatedAt()
+    {
+        var now = DateTime.UtcNow;
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State is not (EntityState.Added or EntityState.Modified)) continue;
+            var updatedAt = entry.Metadata.FindProperty("UpdatedAt");
+            if (updatedAt?.ClrType == typeof(DateTime)) entry.Property("UpdatedAt").CurrentValue = now;
+        }
+    }
+
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
         builder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
