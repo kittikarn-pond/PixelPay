@@ -28,17 +28,8 @@ public sealed class WalletService(IAppDbContext db)
         var walletId = await db.Wallets.Where(w => w.UserId == userId).Select(w => w.Id).FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException("Wallet not found");
 
-        // Prisma rejects a non-Int or negative skip and a non-Int take; Nest turns that into a 500.
-        var skip = PrismaInt((page - 1) * limit, "skip");
-        var take = PrismaInt(limit, "take");
-        if (skip < 0)
-            throw new InvalidOperationException($"skip must be positive, found {skip}");
-
         var query = db.WalletTransactions.AsNoTracking().Where(t => t.WalletId == walletId);
-        // A negative take counts from the end of the list, as in Prisma.
-        var items = take >= 0
-            ? await query.OrderByDescending(t => t.CreatedAt).Skip(skip).Take(take).ToListAsync(ct)
-            : (await query.OrderBy(t => t.CreatedAt).Skip(skip).Take(-take).ToListAsync(ct)).AsEnumerable().Reverse().ToList();
+        var items = await PrismaPaging.NewestFirstAsync(query, t => t.CreatedAt, page, limit, ct);
         var total = await query.CountAsync(ct);
 
         return new TransactionsPage(items.Select(WalletTransactionRow.From).ToList(), total, page, limit);
@@ -98,9 +89,4 @@ public sealed class WalletService(IAppDbContext db)
         var transaction = await db.WalletTransactions.AsNoTracking().SingleAsync(t => t.Id == row.Id, ct);
         return (wallet, transaction);
     }
-
-    private static int PrismaInt(double value, string argument) =>
-        double.IsInteger(value) && value is >= int.MinValue and <= int.MaxValue
-            ? (int)value
-            : throw new InvalidOperationException($"Invalid value for {argument}: {value}");
 }

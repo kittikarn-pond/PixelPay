@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using PixelPay.Api.Envelope;
 using PixelPay.Application.Auth;
 using PixelPay.Application.Common;
+using PixelPay.Application.Orders;
 using PixelPay.Application.Users;
 using PixelPay.Application.Wallets;
 using PixelPay.Infrastructure.Auth;
@@ -22,6 +23,7 @@ public static class AuthSetup
         services.AddScoped<AuthService>();
         services.AddScoped<UsersService>();
         services.AddScoped<WalletService>();
+        services.AddScoped<OrdersQueryService>();
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, NestAuthorizationResultHandler>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
