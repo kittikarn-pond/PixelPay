@@ -7,6 +7,7 @@ using PixelPay.Api.Routing;
 using PixelPay.Api.Validation;
 using PixelPay.Application.Common;
 using PixelPay.Infrastructure.Config;
+using PixelPay.Infrastructure.Persistence;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
@@ -23,6 +24,7 @@ builder.Services.AddSerilog(lc => lc
 
 builder.Services.AddSingleton(env);
 builder.Services.AddSingleton(_ => new MySqlDataSource(env.ConnectionString));
+builder.Services.AddPersistence(env);
 
 builder.Services.AddControllers(o =>
     {

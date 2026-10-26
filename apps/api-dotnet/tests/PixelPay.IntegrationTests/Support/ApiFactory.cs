@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using MySqlConnector;
+using PixelPay.Infrastructure.Persistence;
 using Testcontainers.MySql;
 
 namespace PixelPay.IntegrationTests.Support;
@@ -18,6 +19,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         .Build();
 
     public string ConnectionString => _mysql.GetConnectionString();
+
+    public PixelPayDbContext Db() => PixelPayDbContext.Create(ConnectionString);
 
     public async ValueTask InitializeAsync()
     {
