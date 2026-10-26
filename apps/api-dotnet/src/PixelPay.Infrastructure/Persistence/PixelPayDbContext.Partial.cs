@@ -10,12 +10,22 @@ namespace PixelPay.Infrastructure.Persistence;
 // Hand-written half of the scaffolded context. scripts/scaffold.ps1 only overwrites PixelPayDbContext.cs.
 public partial class PixelPayDbContext : IAppDbContext
 {
-    public static void Configure(DbContextOptionsBuilder options, string connectionString)
-    {
-        // char(36) ids are plain strings (Prisma uuid), not Guid.
-        var cs = new MySqlConnectionStringBuilder(connectionString) { GuidFormat = MySqlGuidFormat.None };
-        options.UseMySql(cs.ConnectionString, ServerVersion.Parse("8.0-mysql"));
-    }
+    public static void Configure(DbContextOptionsBuilder options, string connectionString) =>
+        options.UseMySql(ConnectionString(connectionString), ServerVersion.Parse("8.0-mysql"));
+
+    /// <summary>
+    /// The settings EF needs. Pomelo uses a <see cref="MySqlDataSource"/> from DI when one is registered,
+    /// so that data source must be built from this string too.
+    /// </summary>
+    public static string ConnectionString(string connectionString) =>
+        new MySqlConnectionStringBuilder(connectionString)
+        {
+            // char(36) ids are plain strings (Prisma uuid), not Guid.
+            GuidFormat = MySqlGuidFormat.None,
+            // Mandatory for Pomelo.
+            AllowUserVariables = true,
+            UseAffectedRows = false,
+        }.ConnectionString;
 
     public static PixelPayDbContext Create(string connectionString)
     {

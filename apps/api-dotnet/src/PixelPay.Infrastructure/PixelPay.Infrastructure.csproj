@@ -4,6 +4,7 @@
     <ProjectReference Include="..\PixelPay.Domain\PixelPay.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />

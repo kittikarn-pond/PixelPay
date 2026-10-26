@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using PixelPay.Api.Envelope;
 using PixelPay.Application.Auth;
+using PixelPay.Application.Common;
 using PixelPay.Infrastructure.Auth;
 using PixelPay.Infrastructure.Config;
 
@@ -15,6 +16,8 @@ public static class AuthSetup
     {
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<ITokenService, JwtTokenService>();
+        services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
+        services.AddScoped<AuthService>();
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, NestAuthorizationResultHandler>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

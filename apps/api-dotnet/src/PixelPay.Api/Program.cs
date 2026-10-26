@@ -1,6 +1,5 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
-using MySqlConnector;
 using PixelPay.Api.Auth;
 using PixelPay.Api.Envelope;
 using PixelPay.Api.Json;
@@ -24,7 +23,6 @@ builder.Services.AddSerilog(lc => lc
     .WriteTo.Console(new RenderedCompactJsonFormatter()));
 
 builder.Services.AddSingleton(env);
-builder.Services.AddSingleton(_ => new MySqlDataSource(env.ConnectionString));
 builder.Services.AddPersistence(env);
 builder.Services.AddJwtAuth(env);
 
