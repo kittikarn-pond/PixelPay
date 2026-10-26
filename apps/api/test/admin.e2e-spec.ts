@@ -1,35 +1,16 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const request = require('supertest');
-import { AppModule } from '../src/app.module';
-import { PrismaService } from '../src/prisma/prisma.service';
-import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
-import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
+import { createTarget, Target } from './support/target';
 import * as bcrypt from 'bcrypt';
 
 describe('Admin (e2e)', () => {
-  let app: NestFastifyApplication;
+  let target: Target;
   let adminToken: string;
   let userToken: string;
 
   beforeAll(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = module.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter(),
-    );
-    app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-    app.useGlobalInterceptors(new ResponseInterceptor());
-    app.useGlobalFilters(new HttpExceptionFilter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
-
-    const prisma = module.get(PrismaService);
+    target = await createTarget();
+    const { prisma } = target;
 
     // Create admin user directly in DB
     const passwordHash = await bcrypt.hash('Admin1234!', 12);
@@ -48,21 +29,21 @@ describe('Admin (e2e)', () => {
       },
     });
 
-    const adminRes = await request(app.getHttpServer())
+    const adminRes = await request(target.http)
       .post('/api/v1/auth/login')
       .send({ email: 'admin@pixelpay.test', password: 'Admin1234!' });
     adminToken = adminRes.body.data.accessToken;
 
-    const userRes = await request(app.getHttpServer())
+    const userRes = await request(target.http)
       .post('/api/v1/auth/register')
       .send({ email: `regular+${Date.now()}@test.com`, password: 'Test1234!', displayName: 'Regular' });
     userToken = userRes.body.data.accessToken;
   });
 
-  afterAll(() => app.close());
+  afterAll(() => target.close());
 
   it('GET /admin/stats returns dashboard data (admin)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(target.http)
       .get('/api/v1/admin/stats')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
@@ -71,14 +52,14 @@ describe('Admin (e2e)', () => {
   });
 
   it('GET /admin/stats returns 403 for regular user', async () => {
-    await request(app.getHttpServer())
+    await request(target.http)
       .get('/api/v1/admin/stats')
       .set('Authorization', `Bearer ${userToken}`)
       .expect(403);
   });
 
   it('GET /admin/users returns paginated users', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(target.http)
       .get('/api/v1/admin/users')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);

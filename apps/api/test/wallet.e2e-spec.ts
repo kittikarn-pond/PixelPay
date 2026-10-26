@@ -1,42 +1,22 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ValidationPipe } from '@nestjs/common';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const request = require('supertest');
-import { AppModule } from '../src/app.module';
-import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
-import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
-import { PrismaService } from '../src/prisma/prisma.service';
+import { createTarget, Target } from './support/target';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 describe('Wallet (e2e)', () => {
-  let app: NestFastifyApplication;
-  let prisma: PrismaService;
+  let target: Target;
   let userToken: string;
   let adminToken: string;
   let targetUserId: string;
 
   beforeAll(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = module.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter(),
-    );
-    app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-    app.useGlobalInterceptors(new ResponseInterceptor());
-    app.useGlobalFilters(new HttpExceptionFilter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
-
-    prisma = app.get(PrismaService);
+    target = await createTarget();
+    const { prisma } = target;
 
     // Register a regular user via API
     const ts = Date.now();
-    const userRes = await request(app.getHttpServer())
+    const userRes = await request(target.http)
       .post('/api/v1/auth/register')
       .send({
         email: `wallet-user+${ts}@test.com`,
@@ -60,17 +40,17 @@ describe('Wallet (e2e)', () => {
     });
 
     // Login as admin
-    const adminRes = await request(app.getHttpServer())
+    const adminRes = await request(target.http)
       .post('/api/v1/auth/login')
       .send({ email: adminUser.email, password: 'Admin1234!' });
     adminToken = adminRes.body.data.accessToken;
   });
 
-  afterAll(() => app.close());
+  afterAll(() => target.close());
 
   describe('GET /api/v1/wallet', () => {
     it('returns wallet data for authenticated user', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(target.http)
         .get('/api/v1/wallet')
         .set('Authorization', `Bearer ${userToken}`)
         .expect(200);
@@ -84,7 +64,7 @@ describe('Wallet (e2e)', () => {
     });
 
     it('returns 401 for unauthenticated request', async () => {
-      await request(app.getHttpServer())
+      await request(target.http)
         .get('/api/v1/wallet')
         .expect(401);
     });
@@ -92,7 +72,7 @@ describe('Wallet (e2e)', () => {
 
   describe('GET /api/v1/wallet/transactions', () => {
     it('returns paginated transactions for authenticated user', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(target.http)
         .get('/api/v1/wallet/transactions')
         .set('Authorization', `Bearer ${userToken}`)
         .expect(200);
@@ -103,7 +83,7 @@ describe('Wallet (e2e)', () => {
     });
 
     it('returns 401 for unauthenticated request', async () => {
-      await request(app.getHttpServer())
+      await request(target.http)
         .get('/api/v1/wallet/transactions')
         .expect(401);
     });
@@ -111,7 +91,7 @@ describe('Wallet (e2e)', () => {
 
   describe('POST /api/v1/wallet/deposit', () => {
     it('admin can deposit to a user wallet', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(target.http)
         .post('/api/v1/wallet/deposit')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ userId: targetUserId, amount: 100, description: 'Test deposit' })
@@ -122,7 +102,7 @@ describe('Wallet (e2e)', () => {
     });
 
     it('wallet balance increases after deposit', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(target.http)
         .get('/api/v1/wallet')
         .set('Authorization', `Bearer ${userToken}`)
         .expect(200);
@@ -131,7 +111,7 @@ describe('Wallet (e2e)', () => {
     });
 
     it('regular user cannot deposit (403)', async () => {
-      await request(app.getHttpServer())
+      await request(target.http)
         .post('/api/v1/wallet/deposit')
         .set('Authorization', `Bearer ${userToken}`)
         .send({ userId: targetUserId, amount: 50 })
@@ -139,14 +119,14 @@ describe('Wallet (e2e)', () => {
     });
 
     it('unauthenticated deposit returns 401', async () => {
-      await request(app.getHttpServer())
+      await request(target.http)
         .post('/api/v1/wallet/deposit')
         .send({ userId: targetUserId, amount: 50 })
         .expect(401);
     });
 
     it('deposit with invalid amount returns 400', async () => {
-      await request(app.getHttpServer())
+      await request(target.http)
         .post('/api/v1/wallet/deposit')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ userId: targetUserId, amount: -10 })
@@ -154,7 +134,7 @@ describe('Wallet (e2e)', () => {
     });
 
     it('deposit with missing userId returns 400', async () => {
-      await request(app.getHttpServer())
+      await request(target.http)
         .post('/api/v1/wallet/deposit')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ amount: 50 })
