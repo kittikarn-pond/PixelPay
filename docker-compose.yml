@@ -37,7 +37,7 @@ services:
       - ./apps/api:/app/apps/api
       - /app/apps/api/node_modules
     ports:
-      - "4000:3000"
+      - "4000:3010"
     env_file: .env
     environment:
       DATABASE_URL: mysql://pixelpay:pixelpay@mysql:3306/pixelpay
@@ -59,7 +59,7 @@ services:
       - "4001:3001"
     env_file: .env
     environment:
-      API_URL_INTERNAL: http://api:3000/api/v1
+      API_URL_INTERNAL: http://api:3010/api/v1
     depends_on:
       - api
 
