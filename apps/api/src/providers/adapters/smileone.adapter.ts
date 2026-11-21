@@ -51,17 +51,4 @@ export class SmileOneAdapter implements IProviderAdapter {
       return { success: false, failureReason: error.message };
     }
   }
-
-  async checkOrderStatus(providerOrderId: string) {
-    try {
-      const params = { apiKey: this.apiKey, orderId: providerOrderId };
-      const response = await axios.get(`${this.apiUrl}/order`, { params, timeout: 15000 });
-      const statusMap: Record<string, 'pending' | 'success' | 'failed'> = {
-        SUCCESS: 'success', PENDING: 'pending', FAILED: 'failed',
-      };
-      return { status: statusMap[response.data.status] ?? 'pending', reference: response.data.serialNo };
-    } catch {
-      return { status: 'pending' as const };
-    }
-  }
 }

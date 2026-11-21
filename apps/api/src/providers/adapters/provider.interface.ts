@@ -17,5 +17,4 @@ export interface TopupResult {
 export interface IProviderAdapter {
   readonly slug: string;
   processTopup(params: TopupParams): Promise<TopupResult>;
-  checkOrderStatus(providerOrderId: string): Promise<{ status: 'pending' | 'success' | 'failed'; reference?: string }>;
 }

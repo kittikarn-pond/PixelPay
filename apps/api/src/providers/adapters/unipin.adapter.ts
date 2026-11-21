@@ -49,26 +49,4 @@ export class UnipinAdapter implements IProviderAdapter {
       return { success: false, failureReason: error.message };
     }
   }
-
-  async checkOrderStatus(providerOrderId: string) {
-    try {
-      const response = await axios.get(`${this.apiUrl}/topup/${providerOrderId}`, {
-        params: { apiKey: this.apiKey },
-        timeout: 15000,
-      });
-      const statusMap: Record<string, 'pending' | 'success' | 'failed'> = {
-        success: 'success',
-        pending: 'pending',
-        processing: 'pending',
-        failed: 'failed',
-        cancelled: 'failed',
-      };
-      return {
-        status: statusMap[response.data.status] ?? 'pending',
-        reference: response.data.serialNumber,
-      };
-    } catch {
-      return { status: 'pending' as const };
-    }
-  }
 }

@@ -95,20 +95,4 @@ export class AffiliatesService {
 
     this.logger.log(`Commission ${commissionAmount} THB awarded to affiliate ${referrerId} for order ${orderId}`);
   }
-
-  async processReferral(newUserId: string, referralCode: string) {
-    const referrer = await this.prisma.user.findUnique({ where: { referralCode } });
-    if (!referrer || referrer.id === newUserId) return;
-
-    // Increment totalReferrals for the referrer
-    const affiliate = await this.prisma.affiliate.findUnique({ where: { userId: referrer.id } });
-    if (affiliate) {
-      await this.prisma.affiliate.update({
-        where: { id: affiliate.id },
-        data: { totalReferrals: { increment: 1 } },
-      });
-    }
-
-    this.logger.log(`User ${newUserId} referred by ${referrer.id}`);
-  }
 }
