@@ -66,17 +66,17 @@ export default function AdminUsersPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6">
         <h1 className="font-display text-2xl text-frost">{t('title')}</h1>
         <form
           onSubmit={(e) => { e.preventDefault(); setQuery(search.trim()); setPage(1); }}
-          className="flex gap-2"
+          className="flex gap-2 w-full sm:w-auto"
         >
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('searchPlaceholder')}
-            className="border border-frost/15 bg-void px-3 py-2 text-sm text-frost focus:outline-none focus:ring-2 focus:ring-pixel w-64"
+            className="border border-frost/15 bg-void px-3 py-2 text-sm text-frost focus:outline-none focus:ring-2 focus:ring-pixel min-w-0 flex-1 sm:flex-none sm:w-64"
           />
           <button
             type="submit"

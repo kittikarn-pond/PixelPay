@@ -102,6 +102,7 @@ export default function AdminOrdersPage() {
         <>
           <DataTable<AdminOrder>
             emptyMessage={t('noOrdersFilter')}
+            stackBelow="lg"
             data={data.items}
             columns={[
               {

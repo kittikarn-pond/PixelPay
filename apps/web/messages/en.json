@@ -30,7 +30,11 @@
     "logout": "Log out",
     "login": "Log in",
     "getCredits": "Get credits",
-    "footerNote": "PixelPay — game top-ups over PromptPay"
+    "footerNote": "PixelPay — game top-ups over PromptPay",
+    "menu": "Menu",
+    "closeMenu": "Close menu",
+    "profile": "Profile",
+    "preferences": "Display"
   },
   "home": {
     "heroTagline": "Fast top-ups · Safe · Great value",

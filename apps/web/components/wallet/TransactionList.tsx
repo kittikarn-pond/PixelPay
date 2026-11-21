@@ -29,10 +29,43 @@ const TYPE_CONFIG: Record<WalletTransaction['type'], { key: string; credit: bool
   UNLOCK: { key: 'holdReleased', credit: true },
 };
 
+const baht = (v: string) => `฿${Number(v).toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+
 export function TransactionList({ transactions }: { transactions: WalletTransaction[] }) {
   const t = useTranslations('wallet');
+  const describe = (tx: WalletTransaction) => {
+    const config = TYPE_CONFIG[tx.type];
+    return { label: config ? t(`types.${config.key}`) : tx.type, credit: config?.credit ?? false };
+  };
+
   return (
-    <div className="pixel-cut bg-panel border border-frost/10 overflow-x-auto">
+    <>
+      {/* Phones: one card per transaction. */}
+      <div className="md:hidden pixel-cut bg-panel border border-frost/10 divide-y divide-frost/10 text-sm">
+        {transactions.length === 0 && <p className="text-center py-12 text-frost/40">{t('noTransactions')}</p>}
+        {transactions.map((tx) => {
+          const { label, credit } = describe(tx);
+          return (
+            <div key={tx.id} className="px-4 py-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-frost font-medium">{label}</p>
+                  <p className="text-frost/50 break-words">{tx.metadata?.description ?? '—'}</p>
+                </div>
+                <p className={`shrink-0 font-mono tabular-nums font-medium ${credit ? 'text-mint' : 'text-pink'}`}>
+                  {credit ? '+' : '−'}{baht(tx.amount)}
+                </p>
+              </div>
+              <div className="mt-1 flex items-center justify-between gap-4 text-xs text-frost/40">
+                <span>{new Date(tx.createdAt).toLocaleString('th-TH')}</span>
+                <span className="font-mono tabular-nums">{t('table.balance')} {baht(tx.balanceAfter)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+    <div className="hidden md:block pixel-cut bg-panel border border-frost/10 overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-void-deep">
           <tr>
@@ -50,9 +83,7 @@ export function TransactionList({ transactions }: { transactions: WalletTransact
             </tr>
           )}
           {transactions.map((tx) => {
-            const config = TYPE_CONFIG[tx.type];
-            const label = config ? t(`types.${config.key}`) : tx.type;
-            const credit = config?.credit ?? false;
+            const { label, credit } = describe(tx);
             return (
               <tr key={tx.id} className="hover:bg-panel-light/60">
                 <td className="px-4 py-3 text-frost/50 whitespace-nowrap">
@@ -61,12 +92,12 @@ export function TransactionList({ transactions }: { transactions: WalletTransact
                 <td className="px-4 py-3 text-frost">{label}</td>
                 <td className="px-4 py-3 text-frost/50">{tx.metadata?.description ?? '—'}</td>
                 <td
-                  className={`px-4 py-3 text-right font-mono tabular-nums font-medium ${credit ? 'text-mint' : 'text-pink'}`}
+                  className={`px-4 py-3 text-right font-mono tabular-nums font-medium whitespace-nowrap ${credit ? 'text-mint' : 'text-pink'}`}
                 >
-                  {credit ? '+' : '−'}฿{Number(tx.amount).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                  {credit ? '+' : '−'}{baht(tx.amount)}
                 </td>
-                <td className="px-4 py-3 text-right font-mono tabular-nums text-frost/60">
-                  ฿{Number(tx.balanceAfter).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                <td className="px-4 py-3 text-right font-mono tabular-nums text-frost/60 whitespace-nowrap">
+                  {baht(tx.balanceAfter)}
                 </td>
               </tr>
             );
@@ -74,5 +105,6 @@ export function TransactionList({ transactions }: { transactions: WalletTransact
         </tbody>
       </table>
     </div>
+    </>
   );
 }

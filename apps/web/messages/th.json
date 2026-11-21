@@ -30,7 +30,11 @@
     "logout": "ออกจากระบบ",
     "login": "เข้าสู่ระบบ",
     "getCredits": "เติมเครดิต",
-    "footerNote": "PixelPay — เติมเกมผ่านพร้อมเพย์"
+    "footerNote": "PixelPay — เติมเกมผ่านพร้อมเพย์",
+    "menu": "เมนู",
+    "closeMenu": "ปิดเมนู",
+    "profile": "โปรไฟล์",
+    "preferences": "การแสดงผล"
   },
   "home": {
     "heroTagline": "เติมเกมไว · ปลอดภัย · คุ้มค่า",

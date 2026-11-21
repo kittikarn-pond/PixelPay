@@ -107,7 +107,34 @@ export default function AffiliatePage() {
       <h2 className="font-display text-xl text-frost mb-4">{t('commissions')}</h2>
       {commissions ? (
         <>
-          <div className="pixel-cut bg-panel border border-frost/10 overflow-x-auto">
+          {/* Phones: one card per commission. */}
+          <div className="md:hidden pixel-cut bg-panel border border-frost/10 divide-y divide-frost/10 text-sm">
+            {commissions.items.length === 0 && <p className="text-center py-12 text-frost/40">{t('noCommissions')}</p>}
+            {commissions.items.map((c) => (
+              <div key={c.id} className="px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-mono text-frost break-all">{c.order.orderNumber}</span>
+                  <span className="shrink-0 font-mono tabular-nums font-medium text-mint">
+                    +฿{c.commissionAmount.toLocaleString('th-TH')}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-3 text-xs text-frost/50">
+                  <span>
+                    {new Date(c.createdAt).toLocaleDateString('th-TH')} · {t('table.orderTotal')} ฿{c.order.totalPrice.toLocaleString('th-TH')}
+                  </span>
+                  <span
+                    className={`shrink-0 px-2 py-0.5 rounded-full font-medium ${
+                      c.status === 'PAID' ? 'bg-mint/15 text-mint' : 'bg-gold/15 text-neon'
+                    }`}
+                  >
+                    {c.status === 'PAID' ? t('paid') : t('pending')}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden md:block pixel-cut bg-panel border border-frost/10 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-void-deep">
                 <tr>

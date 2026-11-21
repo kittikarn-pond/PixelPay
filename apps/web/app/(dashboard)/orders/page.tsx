@@ -47,7 +47,30 @@ export default function OrdersPage() {
 
       {data && (
         <>
-          <div className="pixel-cut bg-panel border border-frost/10 overflow-x-auto">
+          {/* Phones: each order is a tappable card. */}
+          <div className="md:hidden pixel-cut bg-panel border border-frost/10 divide-y divide-frost/10 text-sm">
+            {data.items.length === 0 && (
+              <p className="text-center py-12 px-4 text-frost/40">
+                {t.rich('empty', {
+                  link: (chunks) => <Link href="/" className="text-neon font-semibold hover:underline">{chunks}</Link>,
+                })}
+              </p>
+            )}
+            {data.items.map((o) => (
+              <Link key={o.id} href={`/orders/${o.id}`} className="block px-4 py-3 hover:bg-panel-light/60">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-mono text-frost break-all">{o.orderNumber}</span>
+                  <OrderStatusBadge status={o.status} />
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-3">
+                  <span className="text-frost/50">{new Date(o.createdAt).toLocaleString('th-TH')}</span>
+                  <span className="font-mono tabular-nums text-frost">฿{Number(o.totalPrice).toLocaleString('th-TH')}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <div className="hidden md:block pixel-cut bg-panel border border-frost/10 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-void-deep">
                 <tr>
