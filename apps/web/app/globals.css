@@ -122,10 +122,3 @@
   }
 }
 
-/* Horizontal scrollers (e.g. the admin nav on phones): scroll by touch, no visible bar. */
-.no-scrollbar {
-  scrollbar-width: none;
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
