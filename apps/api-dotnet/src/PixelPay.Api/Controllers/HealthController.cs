@@ -1,5 +1,7 @@
+using Hangfire;
 using Microsoft.AspNetCore.Mvc;
 using MySqlConnector;
+using PixelPay.Infrastructure.Jobs;
 
 namespace PixelPay.Api.Controllers;
 
@@ -17,5 +19,16 @@ public class HealthController(MySqlDataSource db) : ControllerBase
         await using var cmd = new MySqlCommand("SELECT 1", conn);
         await cmd.ExecuteScalarAsync(ct);
         return new { status = "ok", database = "connected" };
+    }
+
+    /// <summary>The topup queue's backlog, in BullMQ's getJobCounts shape.</summary>
+    [HttpGet("queues")]
+    public object CheckQueues([FromServices] JobStorage storage)
+    {
+        var monitor = storage.GetMonitoringApi();
+        var waiting = monitor.EnqueuedCount(Queues.Topup);
+        var active = monitor.ProcessingCount();
+        var failed = monitor.FailedCount();
+        return new { status = "ok", topupQueue = new { waiting, active, failed } };
     }
 }

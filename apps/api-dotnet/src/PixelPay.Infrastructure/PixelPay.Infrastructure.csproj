@@ -4,11 +4,22 @@
     <ProjectReference Include="..\PixelPay.Domain\PixelPay.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Hangfire.AspNetCore" />
+    <PackageReference Include="Hangfire.Core" />
+    <PackageReference Include="Hangfire.Redis.StackExchange" />
+    <PackageReference Include="MailKit" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
     <PackageReference Include="MySqlConnector" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Persistence/Migrations/Sql/*.sql" />
+    <EmbeddedResource Include="Seed/catalog.json" />
   </ItemGroup>
 </Project>

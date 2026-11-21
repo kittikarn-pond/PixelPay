@@ -16,7 +16,7 @@ public class JwtTokenServiceTests
     private static readonly JsonWebTokenHandler Handler = new();
 
     private static JwtTokenService Service(TimeProvider? time = null) => new(
-        new EnvConfig("Server=x", AccessSecret, RefreshSecret, "15m", "7d", new string('0', 64), 3000, "http://x"),
+        new EnvConfig("Server=x", AccessSecret, RefreshSecret, "15m", "7d", new string('0', 64), 3000, "http://x", "redis://localhost:6379"),
         time ?? TimeProvider.System);
 
     private static string Sign(string secret, string payload, string alg = SecurityAlgorithms.HmacSha256) =>

@@ -1,24 +1,22 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PixelPay.Api.Auth;
-using PixelPay.Application.Common;
 using PixelPay.Application.Orders;
 
 namespace PixelPay.Api.Controllers;
 
-[ApiController]
 [Authorize]
 [Route("api/v1/orders")]
-public class OrdersController(OrdersQueryService orders) : ControllerBase
+public class OrdersController(OrdersQueryService queries, OrdersService orders) : NestController
 {
-    // Unary +, like Node: the default applies only when the key is absent, and a repeated key is an array (NaN).
+    [HttpPost]
+    public Task<Dictionary<string, object?>> Create(CreateOrderDto dto, CancellationToken ct) => orders.CreateAsync(UserId, dto, ct);
+
     [HttpGet]
-    public Task<OrdersPage> List(CancellationToken ct) =>
-        orders.FindByUserAsync(HttpContext.GetCurrentUser().Id, Number("page", 1), Number("limit", 20), ct);
+    public Task<OrdersPage> List(CancellationToken ct) => queries.FindByUserAsync(UserId, Number("page", 1), Number("limit", 20), ct);
 
     [HttpGet("{id}")]
-    public Task<OrderDetail> Get(string id, CancellationToken ct) => orders.FindByIdAsync(id, HttpContext.GetCurrentUser().Id, ct);
+    public Task<OrderDetail> Get(string id, CancellationToken ct) => queries.FindByIdAsync(id, UserId, ct);
 
-    private double Number(string key, double fallback) =>
-        !Request.Query.TryGetValue(key, out var v) ? fallback : v.Count == 1 ? Js.ToNumber(v[0]!) : double.NaN;
+    [HttpPost("{id}/cancel")]
+    public Task<object> Cancel(string id, CancellationToken ct) => orders.CancelAsync(id, UserId, ct);
 }
