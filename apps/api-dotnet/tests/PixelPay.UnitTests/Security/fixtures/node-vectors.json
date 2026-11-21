@@ -1,0 +1,8 @@
+{
+  "keyHex": "03a452da1a3a3fadf5116c3158231da18dbbe07d6d3b7a6f782cf2ef23faeeb7",
+  "plaintext": "pixelpay-secret ทดสอบ 🔑",
+  "ciphertext": "6acd3ec69096fe8dcc36fd84:e134dc1b4176d799dfd5ff3c4a525d38:1203e3f4e67cfb038ce9843cb43e75567d0f4ab69a94226279164f88cfb81c8cf844d5fa",
+  "hmacSecret": "webhook-secret",
+  "hmacData": "{\"orderId\":\"123\",\"amount\":\"99.50\"}",
+  "hmacHex": "aaef40c5c3e8d5adb17c3fd32cb47f0a52b4f1413e75fc935e02cf8ff6536899"
+}

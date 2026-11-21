@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, develop]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   test:
@@ -85,3 +85,114 @@ jobs:
           NEXT_PUBLIC_API_URL: https://pixelpay.th/api/v1
           NEXT_PUBLIC_WS_URL: wss://pixelpay.th
         run: cd apps/web && npm run build
+
+  dotnet:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api-dotnet
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: pixelpay
+          MYSQL_USER: pixelpay
+          MYSQL_PASSWORD: pixelpay
+          MYSQL_DATABASE: pixelpay_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -u pixelpay -ppixelpay"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build -c Release
+
+      - name: Test
+        run: dotnet test -c Release --no-build
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: .
+        run: npm install
+
+      - name: Generate Prisma client and run migrations
+        working-directory: apps/api
+        env:
+          DATABASE_URL: mysql://pixelpay:pixelpay@localhost:3306/pixelpay_test
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+
+      - name: Start Node API (port 3000)
+        working-directory: apps/api
+        env:
+          APP_PORT: 3000
+          DATABASE_URL: mysql://pixelpay:pixelpay@localhost:3306/pixelpay_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test_jwt_secret_64_chars_minimum_for_testing_purposes_only
+          JWT_REFRESH_SECRET: test_refresh_secret_64_chars_minimum_for_testing_purposes
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
+          JWT_EXPIRES_IN: 15m
+          JWT_REFRESH_EXPIRES_IN: 7d
+        run: |
+          npm run build
+          nohup node dist/src/main.js > node.log 2>&1 &
+
+      - name: Start .NET API (port 3002) and gateway (port 8080)
+        env:
+          DATABASE_URL: mysql://pixelpay:pixelpay@localhost:3306/pixelpay_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test_jwt_secret_64_chars_minimum_for_testing_purposes_only
+          JWT_REFRESH_SECRET: test_refresh_secret_64_chars_minimum_for_testing_purposes
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
+          JWT_EXPIRES_IN: 15m
+          JWT_REFRESH_EXPIRES_IN: 7d
+        run: |
+          APP_PORT=3002 nohup dotnet run -c Release --no-build --no-launch-profile --project src/PixelPay.Api > api.log 2>&1 &
+          ASPNETCORE_URLS=http://localhost:8080 NODE_API_URL=http://localhost:3000 NET_API_URL=http://localhost:3002 \
+            nohup dotnet run -c Release --no-build --no-launch-profile --project src/PixelPay.Gateway > gateway.log 2>&1 &
+
+      - name: Wait for servers
+        run: |
+          for port in 3000 3002 8080; do
+            timeout 120 bash -c "until curl -sf http://localhost:$port/api/v1/health; do sleep 2; done"
+          done
+
+      # The first requests to a cold .NET process exceed Jest's default 5s hook timeout.
+      - name: Run e2e tests through the gateway
+        working-directory: apps/api
+        env:
+          E2E_BASE_URL: http://localhost:8080
+          E2E_NODE_URL: http://localhost:3000
+          DATABASE_URL: mysql://pixelpay:pixelpay@localhost:3306/pixelpay_test
+        run: npm run test:e2e -- --testTimeout=30000
+
+      - name: Server logs
+        if: failure()
+        run: |
+          cat ../api/node.log || true
+          cat api.log gateway.log || true

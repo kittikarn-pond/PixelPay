@@ -1,32 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const request = require('supertest');
-import { AppModule } from '../src/app.module';
-import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
-import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
+import { createTarget, Target } from './support/target';
 
 describe('Users (e2e)', () => {
-  let app: NestFastifyApplication;
+  let target: Target;
   let accessToken: string;
 
   beforeAll(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    target = await createTarget();
 
-    app = module.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter(),
-    );
-    app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-    app.useGlobalInterceptors(new ResponseInterceptor());
-    app.useGlobalFilters(new HttpExceptionFilter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
-
-    const res = await request(app.getHttpServer())
+    const res = await request(target.http)
       .post('/api/v1/auth/register')
       .send({
         email: `user+${Date.now()}@test.com`,
@@ -36,10 +19,10 @@ describe('Users (e2e)', () => {
     accessToken = res.body.data.accessToken;
   });
 
-  afterAll(() => app.close());
+  afterAll(() => target.close());
 
   it('GET /api/v1/users/profile returns profile', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(target.http)
       .get('/api/v1/users/profile')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
@@ -47,7 +30,7 @@ describe('Users (e2e)', () => {
   });
 
   it('PATCH /api/v1/users/profile updates display name', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(target.http)
       .patch('/api/v1/users/profile')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ displayName: 'Updated Name' })

@@ -1,31 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const request = require('supertest');
-import { AppModule } from '../src/app.module';
-import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
-import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
+import { createTarget, Target } from './support/target';
 
 describe('Auth (e2e)', () => {
-  let app: NestFastifyApplication;
+  let target: Target;
 
   beforeAll(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = module.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter(),
-    );
-    app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-    app.useGlobalInterceptors(new ResponseInterceptor());
-    app.useGlobalFilters(new HttpExceptionFilter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+    target = await createTarget();
   });
 
-  afterAll(() => app.close());
+  afterAll(() => target.close());
 
   const user = {
     email: `test+${Date.now()}@pixelpay.test`,
@@ -35,7 +19,7 @@ describe('Auth (e2e)', () => {
 
   describe('POST /api/v1/auth/register', () => {
     it('registers a new user and returns tokens', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(target.http)
         .post('/api/v1/auth/register')
         .send(user)
         .expect(201);
@@ -46,14 +30,14 @@ describe('Auth (e2e)', () => {
     });
 
     it('rejects duplicate email', async () => {
-      await request(app.getHttpServer())
+      await request(target.http)
         .post('/api/v1/auth/register')
         .send(user)
         .expect(409);
     });
 
     it('rejects weak password', async () => {
-      await request(app.getHttpServer())
+      await request(target.http)
         .post('/api/v1/auth/register')
         .send({ ...user, email: 'other@test.com', password: '123' })
         .expect(400);
@@ -62,7 +46,7 @@ describe('Auth (e2e)', () => {
 
   describe('POST /api/v1/auth/login', () => {
     it('returns tokens for valid credentials', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(target.http)
         .post('/api/v1/auth/login')
         .send({ email: user.email, password: user.password })
         .expect(200);
@@ -71,7 +55,7 @@ describe('Auth (e2e)', () => {
     });
 
     it('returns 401 for wrong password', async () => {
-      await request(app.getHttpServer())
+      await request(target.http)
         .post('/api/v1/auth/login')
         .send({ email: user.email, password: 'wrongpass' })
         .expect(401);
@@ -80,7 +64,7 @@ describe('Auth (e2e)', () => {
 
   describe('POST /api/v1/auth/refresh', () => {
     it('returns a new token pair for a valid refresh token', async () => {
-      const loginRes = await request(app.getHttpServer())
+      const loginRes = await request(target.http)
         .post('/api/v1/auth/login')
         .send({ email: user.email, password: user.password })
         .expect(200);
@@ -93,7 +77,7 @@ describe('Auth (e2e)', () => {
       // boundary so the two tokens are actually distinguishable.
       await new Promise((resolve) => setTimeout(resolve, 1100));
 
-      const res = await request(app.getHttpServer())
+      const res = await request(target.http)
         .post('/api/v1/auth/refresh')
         .send({ refreshToken })
         .expect(200);
@@ -105,17 +89,33 @@ describe('Auth (e2e)', () => {
     });
 
     it('rejects an invalid refresh token', async () => {
-      await request(app.getHttpServer())
+      await request(target.http)
         .post('/api/v1/auth/refresh')
         .send({ refreshToken: 'not-a-real-token' })
         .expect(401);
     });
 
     it('rejects a request with no refresh token', async () => {
-      await request(app.getHttpServer())
+      await request(target.http)
         .post('/api/v1/auth/refresh')
         .send({})
         .expect(400);
     });
+  });
+
+  // Tokens issued by Node must be accepted by the server under test (.NET via the gateway).
+  const nodeUrl = process.env.E2E_NODE_URL;
+  (nodeUrl ? it : it.skip)('accepts a token issued by the Node API', async () => {
+    const nodeUser = { ...user, email: `node+${Date.now()}@pixelpay.test` };
+    await request(nodeUrl).post('/api/v1/auth/register').send(nodeUser).expect(201);
+    const login = await request(nodeUrl)
+      .post('/api/v1/auth/login')
+      .send({ email: nodeUser.email, password: nodeUser.password })
+      .expect(200);
+
+    await request(target.http)
+      .get('/api/v1/wallet')
+      .set('Authorization', `Bearer ${login.body.data.accessToken}`)
+      .expect(200);
   });
 });

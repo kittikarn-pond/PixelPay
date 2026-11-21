@@ -1,0 +1,6 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+WORKDIR /app
+COPY apps/api-dotnet ./
+RUN dotnet restore src/PixelPay.Gateway
+ENV DOTNET_USE_POLLING_FILE_WATCHER=1
+CMD ["dotnet", "watch", "--project", "src/PixelPay.Gateway", "run"]

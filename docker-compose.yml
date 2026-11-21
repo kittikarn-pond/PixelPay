@@ -37,9 +37,10 @@ services:
       - ./apps/api:/app/apps/api
       - /app/apps/api/node_modules
     ports:
-      - "4000:3010"
+      - "4010:3010"
     env_file: .env
     environment:
+      APP_PORT: 3010
       DATABASE_URL: mysql://pixelpay:pixelpay@mysql:3306/pixelpay
       REDIS_URL: redis://:pixelpay@redis:6379
     depends_on:
@@ -47,6 +48,50 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  api-dotnet:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.api-dotnet.dev
+    volumes:
+      - ./apps/api-dotnet:/app
+      - /app/src/PixelPay.Domain/bin
+      - /app/src/PixelPay.Domain/obj
+      - /app/src/PixelPay.Application/bin
+      - /app/src/PixelPay.Application/obj
+      - /app/src/PixelPay.Infrastructure/bin
+      - /app/src/PixelPay.Infrastructure/obj
+      - /app/src/PixelPay.Api/bin
+      - /app/src/PixelPay.Api/obj
+    ports:
+      - "4002:3000"
+    env_file: .env
+    environment:
+      APP_PORT: 3000
+      DATABASE_URL: mysql://pixelpay:pixelpay@mysql:3306/pixelpay
+      REDIS_URL: redis://:pixelpay@redis:6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.gateway.dev
+    volumes:
+      - ./apps/api-dotnet:/app
+      - /app/src/PixelPay.Gateway/bin
+      - /app/src/PixelPay.Gateway/obj
+    ports:
+      - "4000:8080"
+    environment:
+      NODE_API_URL: http://api:3010
+      NET_API_URL: http://api-dotnet:3000
+    depends_on:
+      - api
+      - api-dotnet
 
   web:
     build:
@@ -59,9 +104,9 @@ services:
       - "4001:3001"
     env_file: .env
     environment:
-      API_URL_INTERNAL: http://api:3010/api/v1
+      API_URL_INTERNAL: http://gateway:8080/api/v1
     depends_on:
-      - api
+      - gateway
 
 volumes:
   mysql_data:
