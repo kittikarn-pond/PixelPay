@@ -3,7 +3,7 @@ using System.Text;
 
 namespace PixelPay.Infrastructure.Security;
 
-/// <summary>Byte-compatible with apps/api/src/common/utils/crypto.ts.</summary>
+/// <summary>AES-256-GCM as iv:tag:data hex and HMAC-SHA256 hex: the format the former Node API wrote, which the database holds.</summary>
 public static class CryptoUtil
 {
     private const int KeySize = 32;

@@ -168,16 +168,17 @@ public sealed class OrderFlowTests(ApiFactory factory) : IClassFixture<ApiFactor
     public async Task Completed_order_pays_cashback_and_referral_commission()
     {
         var (referrerId, _) = await _api.RegisterUser();
+        var (gameId, productId) = await _api.CreateProduct(100);
         string referralCode;
         await using (var db = factory.Db())
         {
             referralCode = db.Users.Single(u => u.Id == referrerId).ReferralCode;
-            db.CashbackRules.Add(new CashbackRule { Name = "5%", CashbackType = CashbackType.PERCENTAGE, Value = 5 });
+            // Scoped to this game so the rule cannot pay cashback in the other tests of this class.
+            db.CashbackRules.Add(new CashbackRule { Name = "5%", CashbackType = CashbackType.PERCENTAGE, Value = 5, GameId = gameId });
             await db.SaveChangesAsync(Ct);
         }
         var (buyerId, buyerToken) = await _api.RegisterUser(referralCode);
         await _api.Fund(buyerId, 200);
-        var (_, productId) = await _api.CreateProduct(100);
         factory.Providers.Next = _ => new TopupResult(true, "x");
         factory.Jobs.Clear();
         var order = await TestApi.Data(await _api.Send(HttpMethod.Post, "/api/v1/orders",
@@ -186,7 +187,7 @@ public sealed class OrderFlowTests(ApiFactory factory) : IClassFixture<ApiFactor
         await factory.RunJobsAsync();
 
         var orderId = order.GetProperty("id").GetString()!;
-        Assert.True((await _api.Order(orderId)).CashbackAmount >= 5m);
+        Assert.Equal(5.00m, (await _api.Order(orderId)).CashbackAmount);
         Assert.Contains(WalletTransactionType.CASHBACK_CREDIT, await _api.TransactionTypes(buyerId));
         await using var check = factory.Db();
         var commission = check.AffiliateCommissions.Single(c => c.OrderId == orderId);
@@ -245,7 +246,7 @@ public sealed class OrderFlowTests(ApiFactory factory) : IClassFixture<ApiFactor
 
         Assert.Equal(OrderStatus.COMPLETED, (await _api.Order(orderId)).Status);
         var wallet = await _api.Wallet(userId);
-        Assert.Equal(12m + (await _api.Order(orderId)).CashbackAmount, wallet.Balance); // cashback rules from other tests may apply
+        Assert.Equal(12m, wallet.Balance);
         Assert.Equal(0m, wallet.LockedBalance);
     }
 

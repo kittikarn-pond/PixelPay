@@ -5,7 +5,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\PixelPay.Api\PixelPay.Api.csproj" />
-    <ProjectReference Include="..\..\src\PixelPay.Gateway\PixelPay.Gateway.csproj" Aliases="gateway" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
