@@ -8,8 +8,8 @@ public class EnvConfigTests
     private static readonly Dictionary<string, string?> Required = new()
     {
         ["DATABASE_URL"] = "mysql://u:p@h/db",
-        ["JWT_SECRET"] = "jwt",
-        ["JWT_REFRESH_SECRET"] = "refresh",
+        ["JWT_SECRET"] = "jwt_secret_at_least_32_bytes_long",
+        ["JWT_REFRESH_SECRET"] = "refresh_secret_at_least_32_bytes_",
         ["ENCRYPTION_KEY"] = "key",
     };
 
@@ -48,5 +48,29 @@ public class EnvConfigTests
 
         var ex = Assert.Throws<InvalidOperationException>(() => Load(values));
         Assert.Equal("APP_PORT must be an integer", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("JWT_SECRET")]
+    [InlineData("JWT_REFRESH_SECRET")]
+    public void Short_secret_throws(string name)
+    {
+        var values = new Dictionary<string, string?>(Required) { [name] = new string('x', 31) };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => Load(values));
+        Assert.Equal($"{name} must be at least 32 bytes", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("JWT_EXPIRES_IN", "abc")]
+    [InlineData("JWT_REFRESH_EXPIRES_IN", "abc")]
+    [InlineData("JWT_EXPIRES_IN", "0")]
+    [InlineData("JWT_REFRESH_EXPIRES_IN", "999999999d")]
+    public void Invalid_duration_throws(string name, string value)
+    {
+        var values = new Dictionary<string, string?>(Required) { [name] = value };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => Load(values));
+        Assert.Equal($"{name} is not a valid duration", ex.Message);
     }
 }

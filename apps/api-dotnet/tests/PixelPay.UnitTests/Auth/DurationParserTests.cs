@@ -25,5 +25,8 @@ public class DurationParserTests
     [InlineData("-5m")]
     [InlineData("1.5h")]
     [InlineData("99999999999999999999")]
+    [InlineData("0")]
+    [InlineData("0m")]
+    [InlineData("999999999d")]
     public void Rejects(string value) => Assert.Throws<FormatException>(() => DurationParser.Parse(value));
 }

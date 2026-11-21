@@ -165,9 +165,11 @@ public sealed class AuthEndpointsTests(ApiFactory factory) : IClassFixture<ApiFa
         Assert.Null(user.ReferredBy);
     }
 
-    [Fact]
-    public async Task Register_empty_body_lists_class_validator_messages_in_nest_order() =>
-        await AssertBody(await Post("/api/v1/auth/register", "{}"), HttpStatusCode.BadRequest, Validation(
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("null")]
+    public async Task Register_empty_body_lists_class_validator_messages_in_nest_order(string body) =>
+        await AssertBody(await Post("/api/v1/auth/register", body), HttpStatusCode.BadRequest, Validation(
             "email must be an email",
             "password must contain uppercase, lowercase and number",
             "password must be shorter than or equal to 72 characters",
@@ -268,6 +270,7 @@ public sealed class AuthEndpointsTests(ApiFactory factory) : IClassFixture<ApiFa
 
     [Theory]
     [InlineData("{}")]
+    [InlineData("null")]
     [InlineData("""{"email":"a@b.co"}""")]
     [InlineData("""{"password":"Test1234!"}""")]
     [InlineData("""{"email":"","password":"Test1234!"}""")]
@@ -302,6 +305,7 @@ public sealed class AuthEndpointsTests(ApiFactory factory) : IClassFixture<ApiFa
 
     [Theory]
     [InlineData("{}")]
+    [InlineData("null")]
     [InlineData("""{"refreshToken":123}""")]
     public async Task Refresh_without_string_token_returns_400(string body) =>
         await AssertBody(await Post("/api/v1/auth/refresh", body), HttpStatusCode.BadRequest, Validation("refreshToken must be a string"));

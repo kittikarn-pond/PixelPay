@@ -19,7 +19,7 @@ public static partial class ClassValidator
     /// <summary>JSON undefined or null, which <c>@IsOptional()</c> skips.</summary>
     public static bool IsMissing(JsonElement? value) => value is null or { ValueKind: JsonValueKind.Null };
 
-    /// <summary><c>@IsNumber()</c>: a JS number that is not NaN or ±Infinity (JSON.parse turns 1e400 into Infinity).</summary>
+    /// <summary><c>@IsNumber()</c>: a JS number that is not NaN or +/-Infinity (JSON.parse turns 1e400 into Infinity).</summary>
     public static bool IsNumber(JsonElement? value) => JsNumber(value) is { } d && double.IsFinite(d);
 
     /// <summary><c>@IsPositive()</c>: a JS number greater than zero, Infinity included.</summary>
@@ -68,6 +68,10 @@ public static partial class ClassValidator
             && part[0] != '-' && part[^1] != '-'
             && !part.Contains('_'));
     }
+
+    /// <summary>JS /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/: "." stops at line terminators and \d is ASCII.</summary>
+    [GeneratedRegex(@"^(?=[^\n\r\u2028\u2029]*[a-z])(?=[^\n\r\u2028\u2029]*[A-Z])(?=[^\n\r\u2028\u2029]*[0-9])")]
+    public static partial Regex PasswordStrength();
 
     [GeneratedRegex(@"[\uD800-\uDBFF][\uDC00-\uDFFF]")]
     private static partial Regex SurrogatePair();

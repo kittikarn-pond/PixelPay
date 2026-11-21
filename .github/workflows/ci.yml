@@ -125,20 +125,19 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
       - name: Build
         run: dotnet build -c Release
 
       - name: Test
         run: dotnet test -c Release --no-build
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Install dependencies
         working-directory: .
-        run: npm ci
+        run: npm install
 
       - name: Generate Prisma client and run migrations
         working-directory: apps/api

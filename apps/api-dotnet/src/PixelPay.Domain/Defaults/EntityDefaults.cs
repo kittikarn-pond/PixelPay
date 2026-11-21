@@ -8,7 +8,7 @@ namespace PixelPay.Domain.Entities;
 internal static class PrismaDefaults
 {
     public static string NewId() => Guid.NewGuid().ToString();
-    public static DateTime Now() => DateTime.UtcNow;
+    public static DateTime Now() => PrismaTime.Now();
     public static RawJson EmptyJson() => new("{}");
 }
 

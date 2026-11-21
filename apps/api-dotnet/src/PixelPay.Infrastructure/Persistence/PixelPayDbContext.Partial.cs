@@ -49,7 +49,7 @@ public partial class PixelPayDbContext : IAppDbContext
 
     private void StampUpdatedAt()
     {
-        var now = DateTime.UtcNow;
+        var now = PrismaTime.Now();
         foreach (var entry in ChangeTracker.Entries())
         {
             if (entry.State is not (EntityState.Added or EntityState.Modified)) continue;

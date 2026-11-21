@@ -20,6 +20,7 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{env.Port}");
 builder.Services.AddSerilog(lc => lc
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
     .WriteTo.Console(new RenderedCompactJsonFormatter()));
 
 builder.Services.AddSingleton(env);

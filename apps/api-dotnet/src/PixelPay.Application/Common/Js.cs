@@ -58,5 +58,5 @@ public static partial class Js
     private static partial System.Text.RegularExpressions.Regex DecimalLiteral();
 
     // ECMAScript WhiteSpace + LineTerminator: .NET's set plus BOM, minus NEL (U+0085).
-    private static bool IsWhiteSpace(char c) => c == '﻿' || (char.IsWhiteSpace(c) && c != '\u0085');
+    private static bool IsWhiteSpace(char c) => c == '\uFEFF' || (char.IsWhiteSpace(c) && c != '\u0085');
 }

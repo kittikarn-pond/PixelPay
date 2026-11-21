@@ -66,9 +66,11 @@ public sealed class WalletService(IAppDbContext db)
         var balanceBefore = locked is [var b] ? b : throw new InvalidOperationException($"No Wallet found for id {walletId}");
 
         // Never read-modify-write the balance: the increment happens in SQL.
+        // Capture the timestamp first: called inside the lambda, EF inlines it as a seconds-only TIMESTAMP literal.
+        var now = PrismaTime.Now();
         await db.Wallets.Where(w => w.Id == walletId).ExecuteUpdateAsync(s => s
             .SetProperty(w => w.Balance, w => w.Balance + amount)
-            .SetProperty(w => w.UpdatedAt, DateTime.UtcNow), ct);
+            .SetProperty(w => w.UpdatedAt, now), ct);
 
         var row = new WalletTransaction
         {

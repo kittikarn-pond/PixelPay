@@ -9,16 +9,23 @@ public static partial class DurationParser
     public static TimeSpan Parse(string v)
     {
         var m = Pattern().Match(v);
-        if (!m.Success || !int.TryParse(m.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var n))
+        if (!m.Success || !int.TryParse(m.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var n) || n <= 0)
             throw new FormatException($"Invalid duration '{v}'");
 
-        return m.Groups[2].Value switch
+        try
         {
-            "m" => TimeSpan.FromMinutes(n),
-            "h" => TimeSpan.FromHours(n),
-            "d" => TimeSpan.FromDays(n),
-            _ => TimeSpan.FromSeconds(n),
-        };
+            return m.Groups[2].Value switch
+            {
+                "m" => TimeSpan.FromMinutes(n),
+                "h" => TimeSpan.FromHours(n),
+                "d" => TimeSpan.FromDays(n),
+                _ => TimeSpan.FromSeconds(n),
+            };
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            throw new FormatException($"Invalid duration '{v}'");
+        }
     }
 
     [GeneratedRegex("^([0-9]+)([smhd]?)$")]
