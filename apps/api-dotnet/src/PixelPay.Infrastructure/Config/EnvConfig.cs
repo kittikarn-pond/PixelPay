@@ -13,7 +13,8 @@ public sealed record EnvConfig(
     string JwtRefreshExpiresIn,
     string EncryptionKey,
     int Port,
-    string FrontendUrl)
+    string FrontendUrl,
+    string RedisUrl)
 {
     public static EnvConfig Load(IConfiguration c) => new(
         MySqlUrl.ToConnectionString(Required(c, "DATABASE_URL")),
@@ -23,7 +24,8 @@ public sealed record EnvConfig(
         Duration(c, "JWT_REFRESH_EXPIRES_IN", "7d"),
         Required(c, "ENCRYPTION_KEY"),
         ParsePort(c),
-        Optional(c, "FRONTEND_URL", "http://localhost:3001"));
+        Optional(c, "FRONTEND_URL", "http://localhost:3001"),
+        Optional(c, "REDIS_URL", "redis://localhost:6379"));
 
     private static int ParsePort(IConfiguration c) =>
         int.TryParse(Optional(c, "APP_PORT", "3000"), NumberStyles.None, CultureInfo.InvariantCulture, out var port)

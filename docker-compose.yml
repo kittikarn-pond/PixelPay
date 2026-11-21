@@ -1,3 +1,24 @@
+x-dotnet-dev: &dotnet-dev
+  build:
+    context: .
+    dockerfile: infrastructure/docker/Dockerfile.api.dev
+  env_file: .env
+  environment: &dotnet-env
+    DATABASE_URL: mysql://pixelpay:pixelpay@mysql:3306/pixelpay
+    REDIS_URL: redis://:pixelpay@redis:6379
+  volumes:
+    - ./apps/api-dotnet:/app
+    - /app/src/PixelPay.Domain/bin
+    - /app/src/PixelPay.Domain/obj
+    - /app/src/PixelPay.Application/bin
+    - /app/src/PixelPay.Application/obj
+    - /app/src/PixelPay.Infrastructure/bin
+    - /app/src/PixelPay.Infrastructure/obj
+    - /app/src/PixelPay.Api/bin
+    - /app/src/PixelPay.Api/obj
+    - /app/src/PixelPay.Worker/bin
+    - /app/src/PixelPay.Worker/obj
+
 services:
   mysql:
     image: mysql:8.0
@@ -29,69 +50,37 @@ services:
       timeout: 5s
       retries: 5
 
+  # Applies EF Core migrations, then exits. A database Prisma created is baselined, not recreated.
+  migrate:
+    <<: *dotnet-dev
+    command: ["dotnet", "run", "--project", "src/PixelPay.Api", "--", "migrate"]
+    restart: "no"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
   api:
-    build:
-      context: .
-      dockerfile: infrastructure/docker/Dockerfile.api.dev
-    volumes:
-      - ./apps/api:/app/apps/api
-      - /app/apps/api/node_modules
+    <<: *dotnet-dev
     ports:
-      - "4010:3010"
-    env_file: .env
+      - "4000:3000"
     environment:
-      APP_PORT: 3010
-      DATABASE_URL: mysql://pixelpay:pixelpay@mysql:3306/pixelpay
-      REDIS_URL: redis://:pixelpay@redis:6379
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  api-dotnet:
-    build:
-      context: .
-      dockerfile: infrastructure/docker/Dockerfile.api-dotnet.dev
-    volumes:
-      - ./apps/api-dotnet:/app
-      - /app/src/PixelPay.Domain/bin
-      - /app/src/PixelPay.Domain/obj
-      - /app/src/PixelPay.Application/bin
-      - /app/src/PixelPay.Application/obj
-      - /app/src/PixelPay.Infrastructure/bin
-      - /app/src/PixelPay.Infrastructure/obj
-      - /app/src/PixelPay.Api/bin
-      - /app/src/PixelPay.Api/obj
-    ports:
-      - "4002:3000"
-    env_file: .env
-    environment:
+      <<: *dotnet-env
       APP_PORT: 3000
-      DATABASE_URL: mysql://pixelpay:pixelpay@mysql:3306/pixelpay
-      REDIS_URL: redis://:pixelpay@redis:6379
+      ASPNETCORE_ENVIRONMENT: Development
     depends_on:
-      mysql:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
 
-  gateway:
-    build:
-      context: .
-      dockerfile: infrastructure/docker/Dockerfile.gateway.dev
-    volumes:
-      - ./apps/api-dotnet:/app
-      - /app/src/PixelPay.Gateway/bin
-      - /app/src/PixelPay.Gateway/obj
-    ports:
-      - "4000:8080"
-    environment:
-      NODE_API_URL: http://api:3010
-      NET_API_URL: http://api-dotnet:3000
+  worker:
+    <<: *dotnet-dev
+    command: ["dotnet", "watch", "--project", "src/PixelPay.Worker", "run"]
     depends_on:
-      - api
-      - api-dotnet
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
 
   web:
     build:
@@ -104,9 +93,9 @@ services:
       - "4001:3001"
     env_file: .env
     environment:
-      API_URL_INTERNAL: http://gateway:8080/api/v1
+      API_URL_INTERNAL: http://api:3000/api/v1
     depends_on:
-      - gateway
+      - api
 
 volumes:
   mysql_data:

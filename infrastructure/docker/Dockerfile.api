@@ -1,23 +1,22 @@
 # Stage 1: Build
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package.json turbo.json ./
-COPY apps/api/package.json ./apps/api/
-RUN npm ci --workspace=apps/api
-COPY apps/api ./apps/api
-WORKDIR /app/apps/api
-RUN npx prisma generate
-RUN npm run build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS builder
+WORKDIR /src
+COPY apps/api-dotnet/global.json apps/api-dotnet/Directory.Build.props apps/api-dotnet/Directory.Packages.props ./
+COPY apps/api-dotnet/src/PixelPay.Domain/PixelPay.Domain.csproj src/PixelPay.Domain/
+COPY apps/api-dotnet/src/PixelPay.Application/PixelPay.Application.csproj src/PixelPay.Application/
+COPY apps/api-dotnet/src/PixelPay.Infrastructure/PixelPay.Infrastructure.csproj src/PixelPay.Infrastructure/
+COPY apps/api-dotnet/src/PixelPay.Api/PixelPay.Api.csproj src/PixelPay.Api/
+RUN dotnet restore src/PixelPay.Api/PixelPay.Api.csproj
+COPY apps/api-dotnet/src ./src
+RUN dotnet publish src/PixelPay.Api/PixelPay.Api.csproj -c Release -o /out --no-restore
 
 # Stage 2: Run
-FROM node:20-alpine AS runner
-RUN addgroup -g 1001 nodejs && adduser -u 1001 -G nodejs -s /bin/sh -D nestjs
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runner
+RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY --from=builder --chown=nestjs:nodejs /app/apps/api/dist ./dist
-COPY --from=builder --chown=nestjs:nodejs /app/apps/api/node_modules ./node_modules
-COPY --from=builder --chown=nestjs:nodejs /app/apps/api/prisma ./prisma
-USER nestjs
+COPY --from=builder --chown=app:app /out ./
+USER app
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
-  CMD wget -q --spider http://localhost:3000/api/v1/health || exit 1
-CMD ["node", "dist/main"]
+  CMD wget -q -O /dev/null http://localhost:3000/api/v1/health || exit 1
+ENTRYPOINT ["dotnet", "PixelPay.Api.dll"]

@@ -6,87 +6,17 @@ on:
   pull_request:
     branches: [master]
 
+env:
+  DATABASE_URL: mysql://pixelpay:pixelpay@localhost:3306/pixelpay_test
+  REDIS_URL: redis://localhost:6379
+  JWT_SECRET: test_jwt_secret_64_chars_minimum_for_testing_purposes_only
+  JWT_REFRESH_SECRET: test_refresh_secret_64_chars_minimum_for_testing_purposes
+  ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+  JWT_EXPIRES_IN: 15m
+  JWT_REFRESH_EXPIRES_IN: 7d
+
 jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: pixelpay
-          MYSQL_USER: pixelpay
-          MYSQL_PASSWORD: pixelpay
-          MYSQL_DATABASE: pixelpay_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd "mysqladmin ping -h localhost -u pixelpay -ppixelpay"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      # package-lock.json is gitignored, so there is nothing for npm ci or the npm cache to use.
-      - name: Install dependencies
-        run: npm install
-
-      - name: Generate Prisma client
-        run: cd apps/api && npx prisma generate
-
-      - name: Run migrations
-        env:
-          DATABASE_URL: mysql://pixelpay:pixelpay@localhost:3306/pixelpay_test
-        run: cd apps/api && npx prisma migrate deploy
-
-      - name: Run unit tests
-        env:
-          DATABASE_URL: mysql://pixelpay:pixelpay@localhost:3306/pixelpay_test
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test_jwt_secret_64_chars_minimum_for_testing_purposes_only
-          JWT_REFRESH_SECRET: test_refresh_secret_64_chars_minimum_for_testing_purposes
-          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-          JWT_EXPIRES_IN: 15m
-          JWT_REFRESH_EXPIRES_IN: 7d
-        run: cd apps/api && npm test -- --coverage
-
-      - name: Run e2e tests
-        env:
-          DATABASE_URL: mysql://pixelpay:pixelpay@localhost:3306/pixelpay_test
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test_jwt_secret_64_chars_minimum_for_testing_purposes_only
-          JWT_REFRESH_SECRET: test_refresh_secret_64_chars_minimum_for_testing_purposes
-          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-          JWT_EXPIRES_IN: 15m
-          JWT_REFRESH_EXPIRES_IN: 7d
-        run: cd apps/api && npm run test:e2e
-
-      - name: Build API
-        run: cd apps/api && npm run build
-
-      - name: Build Web
-        env:
-          NEXT_PUBLIC_API_URL: https://pixelpay.th/api/v1
-          NEXT_PUBLIC_WS_URL: wss://pixelpay.th
-        run: cd apps/web && npm run build
-
-  dotnet:
+  api:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -128,71 +58,55 @@ jobs:
       - name: Build
         run: dotnet build -c Release
 
+      # Unit tests, and integration tests against Testcontainers MySQL/Redis.
       - name: Test
         run: dotnet test -c Release --no-build
+
+      - name: Migrate and seed the e2e database
+        run: |
+          dotnet run -c Release --no-build --no-launch-profile --project src/PixelPay.Api -- migrate
+          dotnet run -c Release --no-build --no-launch-profile --project src/PixelPay.Api -- seed
+
+      - name: Start API (port 3000) and worker
+        run: |
+          APP_PORT=3000 nohup dotnet run -c Release --no-build --no-launch-profile --project src/PixelPay.Api > api.log 2>&1 &
+          nohup dotnet run -c Release --no-build --no-launch-profile --project src/PixelPay.Worker > worker.log 2>&1 &
+          timeout 120 bash -c "until curl -sf http://localhost:3000/api/v1/health; do sleep 2; done"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # package-lock.json is gitignored, so there is nothing for npm ci or the npm cache to use.
+      - name: Install e2e dependencies
+        working-directory: .
+        run: npm install --workspace=@pixelpay/e2e
+
+      - name: Run e2e suites
+        working-directory: apps/e2e
+        env:
+          E2E_BASE_URL: http://localhost:3000
+        run: npm run test:e2e
+
+      - name: Server logs
+        if: failure()
+        run: cat api.log worker.log || true
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Install dependencies
-        working-directory: .
-        run: npm install
+        run: npm install --workspace=@pixelpay/web
 
-      - name: Generate Prisma client and run migrations
-        working-directory: apps/api
+      - name: Build Web
+        working-directory: apps/web
         env:
-          DATABASE_URL: mysql://pixelpay:pixelpay@localhost:3306/pixelpay_test
-        run: |
-          npx prisma generate
-          npx prisma migrate deploy
-
-      - name: Start Node API (port 3000)
-        working-directory: apps/api
-        env:
-          APP_PORT: 3000
-          DATABASE_URL: mysql://pixelpay:pixelpay@localhost:3306/pixelpay_test
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test_jwt_secret_64_chars_minimum_for_testing_purposes_only
-          JWT_REFRESH_SECRET: test_refresh_secret_64_chars_minimum_for_testing_purposes
-          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-          JWT_EXPIRES_IN: 15m
-          JWT_REFRESH_EXPIRES_IN: 7d
-        run: |
-          npm run build
-          nohup node dist/src/main.js > node.log 2>&1 &
-
-      - name: Start .NET API (port 3002) and gateway (port 8080)
-        env:
-          DATABASE_URL: mysql://pixelpay:pixelpay@localhost:3306/pixelpay_test
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test_jwt_secret_64_chars_minimum_for_testing_purposes_only
-          JWT_REFRESH_SECRET: test_refresh_secret_64_chars_minimum_for_testing_purposes
-          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-          JWT_EXPIRES_IN: 15m
-          JWT_REFRESH_EXPIRES_IN: 7d
-        run: |
-          APP_PORT=3002 nohup dotnet run -c Release --no-build --no-launch-profile --project src/PixelPay.Api > api.log 2>&1 &
-          ASPNETCORE_URLS=http://localhost:8080 NODE_API_URL=http://localhost:3000 NET_API_URL=http://localhost:3002 \
-            nohup dotnet run -c Release --no-build --no-launch-profile --project src/PixelPay.Gateway > gateway.log 2>&1 &
-
-      - name: Wait for servers
-        run: |
-          for port in 3000 3002 8080; do
-            timeout 120 bash -c "until curl -sf http://localhost:$port/api/v1/health; do sleep 2; done"
-          done
-
-      # The first requests to a cold .NET process exceed Jest's default 5s hook timeout.
-      - name: Run e2e tests through the gateway
-        working-directory: apps/api
-        env:
-          E2E_BASE_URL: http://localhost:8080
-          E2E_NODE_URL: http://localhost:3000
-          DATABASE_URL: mysql://pixelpay:pixelpay@localhost:3306/pixelpay_test
-        run: npm run test:e2e -- --testTimeout=30000
-
-      - name: Server logs
-        if: failure()
-        run: |
-          cat ../api/node.log || true
-          cat api.log gateway.log || true
+          NEXT_PUBLIC_API_URL: https://pixelpay.th/api/v1
+          NEXT_PUBLIC_WS_URL: https://pixelpay.th
+        run: npm run build

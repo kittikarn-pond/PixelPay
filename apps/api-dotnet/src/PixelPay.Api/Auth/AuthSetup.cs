@@ -1,15 +1,10 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using PixelPay.Api.Envelope;
-using PixelPay.Application.Auth;
-using PixelPay.Application.Common;
-using PixelPay.Application.Orders;
-using PixelPay.Application.Users;
-using PixelPay.Application.Wallets;
 using PixelPay.Infrastructure.Auth;
 using PixelPay.Infrastructure.Config;
+using PixelPay.Infrastructure.Realtime;
 
 namespace PixelPay.Api.Auth;
 
@@ -17,13 +12,6 @@ public static class AuthSetup
 {
     public static IServiceCollection AddJwtAuth(this IServiceCollection services, EnvConfig env)
     {
-        services.TryAddSingleton(TimeProvider.System);
-        services.AddSingleton<ITokenService, JwtTokenService>();
-        services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
-        services.AddScoped<AuthService>();
-        services.AddScoped<UsersService>();
-        services.AddScoped<WalletService>();
-        services.AddScoped<OrdersQueryService>();
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, NestAuthorizationResultHandler>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -33,6 +21,14 @@ public static class AuthSetup
                 o.TokenValidationParameters = JwtTokenService.ValidationParameters(env.JwtSecret);
                 o.Events = new JwtBearerEvents
                 {
+                    // Browsers cannot set headers on a WebSocket, so the SignalR client sends the token in the query string.
+                    OnMessageReceived = ctx =>
+                    {
+                        if (ctx.Request.Path.StartsWithSegments(OrdersHub.Path)
+                            && ctx.Request.Query.TryGetValue("access_token", out var token))
+                            ctx.Token = token;
+                        return Task.CompletedTask;
+                    },
                     OnChallenge = ctx =>
                     {
                         ctx.HandleResponse();

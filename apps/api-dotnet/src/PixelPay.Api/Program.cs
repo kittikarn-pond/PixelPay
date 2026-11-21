@@ -7,7 +7,11 @@ using PixelPay.Api.Routing;
 using PixelPay.Api.Validation;
 using PixelPay.Application.Common;
 using PixelPay.Infrastructure.Config;
+using PixelPay.Infrastructure;
 using PixelPay.Infrastructure.Persistence;
+using PixelPay.Infrastructure.Seed;
+using PixelPay.Infrastructure.Realtime;
+using PixelPay.Api.Controllers;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
@@ -23,9 +27,9 @@ builder.Services.AddSerilog(lc => lc
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
     .WriteTo.Console(new RenderedCompactJsonFormatter()));
 
-builder.Services.AddSingleton(env);
-builder.Services.AddPersistence(env);
+builder.Services.AddPixelPay(builder.Configuration, env);
 builder.Services.AddJwtAuth(env);
+builder.Services.AddScoped<AuditFilter>();
 
 builder.Services.AddControllers(o =>
     {
@@ -63,6 +67,17 @@ if (builder.Environment.IsDevelopment())
 
 var app = builder.Build();
 
+// One-shot commands: `dotnet PixelPay.Api.dll migrate` (run before the API starts) and `... seed` (storefront catalog).
+if (args is ["migrate" or "seed", ..])
+{
+    using var scope = app.Services.CreateScope();
+    if (args[0] == "migrate")
+        await scope.ServiceProvider.GetRequiredService<DbMigrator>().MigrateAsync(CancellationToken.None);
+    else
+        await scope.ServiceProvider.GetRequiredService<CatalogSeeder>().SeedAsync(CancellationToken.None);
+    return;
+}
+
 app.UseSerilogRequestLogging();
 app.UseMiddleware<HeadAsGetMiddleware>();
 app.UseMiddleware<ExceptionEnvelopeMiddleware>();
@@ -78,6 +93,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
+app.MapHub<OrdersHub>(OrdersHub.Path);
 
 app.Run();
 
