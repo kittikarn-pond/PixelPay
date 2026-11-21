@@ -3,6 +3,7 @@ import React from 'react';
 interface Column<T> {
   key: keyof T;
   header: string;
+  align?: 'left' | 'center' | 'right';
   render?: (value: T[keyof T], row: T) => React.ReactNode;
 }
 
@@ -12,6 +13,12 @@ interface Props<T> {
   emptyMessage?: string;
 }
 
+const ALIGN_CLASS: Record<NonNullable<Column<any>['align']>, string> = {
+  left: 'text-left',
+  center: 'text-center',
+  right: 'text-right',
+};
+
 export function DataTable<T extends { id: string }>({ columns, data, emptyMessage = 'No data.' }: Props<T>) {
   return (
     <div className="overflow-x-auto pixel-cut border border-frost/10 bg-panel">
@@ -19,7 +26,10 @@ export function DataTable<T extends { id: string }>({ columns, data, emptyMessag
         <thead className="bg-void-deep">
           <tr>
             {columns.map((col) => (
-              <th key={String(col.key)} className="px-4 py-3 text-left font-mono text-[10px] font-medium text-frost/60 uppercase tracking-wider">
+              <th
+                key={String(col.key)}
+                className={`px-4 py-3 ${ALIGN_CLASS[col.align ?? 'left']} font-mono text-[10px] font-medium text-frost/60 uppercase tracking-wider`}
+              >
                 {col.header}
               </th>
             ))}
@@ -32,7 +42,7 @@ export function DataTable<T extends { id: string }>({ columns, data, emptyMessag
             data.map((row) => (
               <tr key={row.id} className="hover:bg-panel-light/60">
                 {columns.map((col) => (
-                  <td key={String(col.key)} className="px-4 py-3 text-frost/80">
+                  <td key={String(col.key)} className={`px-4 py-3 text-frost/80 ${ALIGN_CLASS[col.align ?? 'left']}`}>
                     {col.render ? col.render(row[col.key], row) : String(row[col.key] ?? '')}
                   </td>
                 ))}

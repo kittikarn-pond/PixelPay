@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { apiFetch } from '../../../lib/api-client';
+import { DataTable } from '../../../components/admin/DataTable';
 import { ProviderFormModal, ProviderFormData } from '../../../components/admin/providers/ProviderFormModal';
 
 interface Provider {
@@ -62,41 +63,35 @@ export default function AdminProvidersPage() {
 
       <p className="text-sm text-frost/50 mb-4">{t('credentialHint')}</p>
 
-      <div className="pixel-cut bg-panel border border-frost/10 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-void-deep">
-            <tr>
-              <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-frost/60">{t('name')}</th>
-              <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-frost/60">{t('slug')}</th>
-              <th className="text-center px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-frost/60">{t('priority')}</th>
-              <th className="text-center px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-frost/60">{t('rateLimit')}</th>
-              <th className="text-center px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-frost/60">{t('status')}</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-frost/5">
-            {providers.length === 0 && (
-              <tr><td colSpan={6} className="text-center py-12 text-frost/40">{t('noProviders')}</td></tr>
-            )}
-            {providers.map((p) => (
-              <tr key={p.id} className="hover:bg-panel-light/60">
-                <td className="px-4 py-3 font-medium text-frost">{p.name}</td>
-                <td className="px-4 py-3 text-frost/50 font-mono">{p.slug}</td>
-                <td className="px-4 py-3 text-center text-frost/50 font-mono tabular-nums">{p.priority}</td>
-                <td className="px-4 py-3 text-center text-frost/50 font-mono tabular-nums">{p.rateLimitPerMin}/min</td>
-                <td className="px-4 py-3 text-center">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.isActive ? 'bg-mint/15 text-mint' : 'bg-frost/10 text-frost/50'}`}>
-                    {p.isActive ? tc('active') : tc('inactive')}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button onClick={() => setModal({ mode: 'edit', provider: p })} className="text-frost/50 hover:text-frost text-xs">{tc('edit')}</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable<Provider>
+        emptyMessage={t('noProviders')}
+        data={providers}
+        columns={[
+          { key: 'name', header: t('name'), render: (_, p) => <span className="font-medium text-frost">{p.name}</span> },
+          { key: 'slug', header: t('slug'), render: (_, p) => <span className="text-frost/50 font-mono">{p.slug}</span> },
+          { key: 'priority', header: t('priority'), align: 'center', render: (_, p) => <span className="text-frost/50 font-mono tabular-nums">{p.priority}</span> },
+          { key: 'rateLimitPerMin', header: t('rateLimit'), align: 'center', render: (_, p) => <span className="text-frost/50 font-mono tabular-nums">{p.rateLimitPerMin}/min</span> },
+          {
+            key: 'isActive',
+            header: t('status'),
+            align: 'center',
+            render: (_, p) => (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.isActive ? 'bg-mint/15 text-mint' : 'bg-frost/10 text-frost/50'}`}>
+                {p.isActive ? tc('active') : tc('inactive')}
+              </span>
+            ),
+          },
+          {
+            key: 'id',
+            header: '',
+            render: (_, p) => (
+              <div className="flex justify-end">
+                <button onClick={() => setModal({ mode: 'edit', provider: p })} className="text-frost/50 hover:text-frost text-xs">{tc('edit')}</button>
+              </div>
+            ),
+          },
+        ]}
+      />
 
       {modal?.mode === 'create' && (
         <ProviderFormModal title={t('newProviderTitle')} isEdit={false} onSubmit={handleCreate} onClose={() => setModal(null)} />

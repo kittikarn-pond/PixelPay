@@ -43,8 +43,8 @@ export function QrPaymentModal({ amount, onClose, onSuccess }: Props) {
     if (!payment) return;
     const interval = setInterval(() => {
       setSecondsLeft((s) => {
-        if (s <= 1) { clearInterval(interval); onCloseRef.current(); return 0; }
-        return s - 1;
+        if (s <= 5) { clearInterval(interval); onCloseRef.current(); return 0; }
+        return s - 5;
       });
       apiFetch<{ status: string }>(`/payments/${paymentRef.current?.id}`).then((p) => {
         if (p.status === 'COMPLETED') { clearInterval(interval); onSuccessRef.current(); }

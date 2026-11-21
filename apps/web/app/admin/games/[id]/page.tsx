@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { apiFetch } from '../../../../lib/api-client';
+import { DataTable } from '../../../../components/admin/DataTable';
 import { ProductFormModal, ProductFormData } from '../../../../components/admin/games/ProductFormModal';
 
 interface Product {
@@ -99,48 +100,42 @@ export default function GameDetailPage() {
         </button>
       </div>
 
-      <div className="pixel-cut bg-panel border border-frost/10 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-void-deep">
-            <tr>
-              <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-frost/60">{t('name')}</th>
-              <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-frost/60">SKU</th>
-              <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-frost/60">{t('cost')}</th>
-              <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-frost/60">{t('sell')}</th>
-              <th className="text-center px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-frost/60">{t('type')}</th>
-              <th className="text-center px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-frost/60">{t('status')}</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-frost/5">
-            {products.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-12 text-frost/40">{t('noProducts')}</td></tr>
-            )}
-            {products.map((p) => (
-              <tr key={p.id} className="hover:bg-panel-light/60">
-                <td className="px-4 py-3 font-medium text-frost">{p.name}</td>
-                <td className="px-4 py-3 font-mono text-frost/50">{p.sku}</td>
-                <td className="px-4 py-3 text-right font-mono tabular-nums text-frost/50">฿{Number(p.priceCost).toFixed(2)}</td>
-                <td className="px-4 py-3 text-right font-mono tabular-nums font-semibold text-frost">฿{Number(p.priceSell).toFixed(2)}</td>
-                <td className="px-4 py-3 text-center">
-                  <span className="text-xs bg-neon/15 text-neon px-2 py-0.5 rounded-full">{p.productType}</span>
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.isActive ? 'bg-mint/15 text-mint' : 'bg-frost/10 text-frost/50'}`}>
-                    {p.isActive ? tc('active') : tc('inactive')}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-3">
-                    <button onClick={() => setModal({ mode: 'edit', product: p })} className="text-frost/50 hover:text-frost text-xs">{tc('edit')}</button>
-                    <button onClick={() => handleDelete(p)} className="text-pink hover:text-pink-dim text-xs">{tc('delete')}</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable<Product>
+        emptyMessage={t('noProducts')}
+        data={products}
+        columns={[
+          { key: 'name', header: t('name'), render: (_, p) => <span className="font-medium text-frost">{p.name}</span> },
+          { key: 'sku', header: 'SKU', render: (_, p) => <span className="font-mono text-frost/50">{p.sku}</span> },
+          { key: 'priceCost', header: t('cost'), align: 'right', render: (_, p) => <span className="font-mono tabular-nums text-frost/50">฿{Number(p.priceCost).toFixed(2)}</span> },
+          { key: 'priceSell', header: t('sell'), align: 'right', render: (_, p) => <span className="font-mono tabular-nums font-semibold text-frost">฿{Number(p.priceSell).toFixed(2)}</span> },
+          {
+            key: 'productType',
+            header: t('type'),
+            align: 'center',
+            render: (_, p) => <span className="text-xs bg-neon/15 text-neon px-2 py-0.5 rounded-full">{p.productType}</span>,
+          },
+          {
+            key: 'isActive',
+            header: t('status'),
+            align: 'center',
+            render: (_, p) => (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.isActive ? 'bg-mint/15 text-mint' : 'bg-frost/10 text-frost/50'}`}>
+                {p.isActive ? tc('active') : tc('inactive')}
+              </span>
+            ),
+          },
+          {
+            key: 'id',
+            header: '',
+            render: (_, p) => (
+              <div className="flex items-center justify-end gap-3">
+                <button onClick={() => setModal({ mode: 'edit', product: p })} className="text-frost/50 hover:text-frost text-xs">{tc('edit')}</button>
+                <button onClick={() => handleDelete(p)} className="text-pink hover:text-pink-dim text-xs">{tc('delete')}</button>
+              </div>
+            ),
+          },
+        ]}
+      />
 
       {modal?.mode === 'create' && (
         <ProductFormModal title={t('addProductTitle')} onSubmit={handleCreate} onClose={() => setModal(null)} />
