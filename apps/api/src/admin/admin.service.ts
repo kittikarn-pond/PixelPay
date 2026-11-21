@@ -2,8 +2,9 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { OrderStatus, UserRole } from '@prisma/client';
+import { OrderStatus, UserRole, WalletTransactionType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { WalletService } from '../wallet/wallet.service';
 import { encryptAes256 } from '../common/utils/crypto';
 import { CreateProviderDto } from './dto/create-provider.dto';
 import { UpdateProviderDto } from './dto/update-provider.dto';
@@ -42,6 +43,7 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private wallet: WalletService,
     @InjectQueue('topup') private topupQueue: Queue,
   ) {
     this.encKey = config.get<string>('app.encryptionKey') ?? '';
@@ -141,7 +143,40 @@ export class AdminService {
     ];
     if (!validStatuses.includes(status as OrderStatus))
       throw new BadRequestException('Invalid status');
-    return this.prisma.order.update({ where: { id }, data: { status: status as OrderStatus } });
+
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({ where: { id } });
+      if (!order) throw new NotFoundException('Order not found');
+
+      const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId: order.userId } });
+      const wasLocked = order.status === OrderStatus.PENDING || order.status === OrderStatus.PROCESSING;
+
+      if (status === OrderStatus.FAILED && wasLocked) {
+        await this.wallet.unlock(
+          tx, wallet.id, order.totalPrice, WalletTransactionType.TOPUP_REFUND,
+          'Order failed — admin override', order.id, 'ORDER',
+        );
+      } else if (status === OrderStatus.COMPLETED && wasLocked) {
+        await this.wallet.debitLocked(
+          tx, wallet.id, order.totalPrice, 'Order completed — admin override', order.id, 'ORDER',
+        );
+      } else if (status === OrderStatus.REFUNDED) {
+        if (order.status === OrderStatus.COMPLETED) {
+          // Funds already left the lock when the order completed — credit them back.
+          await this.wallet.credit(
+            tx, wallet.id, order.totalPrice, WalletTransactionType.TOPUP_REFUND,
+            'Order refunded — admin override', order.id, 'ORDER',
+          );
+        } else if (wasLocked) {
+          await this.wallet.unlock(
+            tx, wallet.id, order.totalPrice, WalletTransactionType.TOPUP_REFUND,
+            'Order refunded — admin override', order.id, 'ORDER',
+          );
+        }
+      }
+
+      return tx.order.update({ where: { id }, data: { status: status as OrderStatus } });
+    });
   }
 
   async retryOrder(id: string) {
@@ -150,15 +185,15 @@ export class AdminService {
     if (order.status !== OrderStatus.FAILED)
       throw new BadRequestException('Only failed orders can be retried');
 
+    await this.prisma.order.update({
+      where: { id },
+      data: { status: OrderStatus.PENDING, retryCount: 0 },
+    });
     await this.topupQueue.add(
       'process-topup',
       { orderId: id, userId: order.userId, gameProductId: order.gameProductId },
       { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
     );
-    await this.prisma.order.update({
-      where: { id },
-      data: { status: OrderStatus.PENDING, retryCount: 0 },
-    });
     return { message: 'Order queued for retry' };
   }
 

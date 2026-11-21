@@ -51,10 +51,19 @@ export class CouponsService {
 
   async applyToOrder(couponId: string, userId: string, orderId: string, discountAmount: number) {
     return this.prisma.$transaction(async (tx) => {
-      await tx.coupon.update({
-        where: { id: couponId },
+      const coupon = await tx.coupon.findUniqueOrThrow({ where: { id: couponId } });
+
+      const updated = await tx.coupon.updateMany({
+        where: {
+          id: couponId,
+          OR: [{ usageLimit: null }, { usedCount: { lt: coupon.usageLimit ?? 0 } }],
+        },
         data: { usedCount: { increment: 1 } },
       });
+      if (updated.count === 0) {
+        throw new BadRequestException('Coupon usage limit reached');
+      }
+
       return tx.couponUsage.create({
         data: { couponId, userId, orderId, discountAmount },
       });

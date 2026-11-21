@@ -36,13 +36,13 @@ export class TopupProcessor extends WorkerHost {
   async process(job: Job<TopupJobData>) {
     const { orderId, userId, gameProductId } = job.data;
 
-    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
-    if (!order || order.status !== OrderStatus.PENDING) return;
-
-    await this.prisma.order.update({
-      where: { id: orderId },
+    const claimed = await this.prisma.order.updateMany({
+      where: { id: orderId, status: OrderStatus.PENDING },
       data: { status: OrderStatus.PROCESSING },
     });
+    if (claimed.count === 0) return;
+
+    const order = await this.prisma.order.findUniqueOrThrow({ where: { id: orderId } });
     this.gateway.emitOrderStatus(userId, orderId, 'PROCESSING');
 
     const providerProducts = await this.providers.getProductProviders(gameProductId);

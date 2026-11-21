@@ -7,6 +7,7 @@ import { AuditModule } from '../audit/audit.module';
 import { ResellersModule } from '../resellers/resellers.module';
 import { GamesModule } from '../games/games.module';
 import { CategoriesModule } from '../categories/categories.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { CategoriesModule } from '../categories/categories.module';
     ResellersModule,
     GamesModule,
     CategoriesModule,
+    WalletModule,
     BullModule.registerQueue({ name: 'topup' }),
   ],
   providers: [AdminService],

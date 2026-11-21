@@ -138,11 +138,14 @@ export class OrdersService {
 
   async cancel(id: string, userId: string) {
     const order = await this.findById(id, userId);
-    if (order.status !== OrderStatus.PENDING) {
-      throw new BadRequestException('Only pending orders can be cancelled');
-    }
     await this.prisma.$transaction(async (tx) => {
-      await tx.order.update({ where: { id }, data: { status: OrderStatus.CANCELLED } });
+      const updated = await tx.order.updateMany({
+        where: { id, status: OrderStatus.PENDING },
+        data: { status: OrderStatus.CANCELLED },
+      });
+      if (updated.count === 0) {
+        throw new BadRequestException('Only pending orders can be cancelled');
+      }
       const userWallet = await tx.wallet.findUniqueOrThrow({ where: { userId: order.userId } });
       await this.wallet.unlock(
         tx,
